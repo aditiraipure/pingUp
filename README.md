@@ -1,126 +1,71 @@
- PingUp — MERN Social Media Web App
+# pingUP - Social Media Web Application (MERN Stack)
 
-PingUp is a full-stack social media platform built using the MERN stack (MongoDB, Express.js, React.js, Node.js). It allows users to create accounts, connect with others, share posts, upload media, and interact in real time through a modern and responsive interface.
+A fully functional **Social Media Web Application** built using the **MERN Stack (MongoDB, Express.js, React.js, and Node.js)**.  
+This project demonstrates real-world full stack development concepts including authentication, background jobs, media optimization, and core social networking features.
 
-This project showcases a complete web application with authentication, media upload, real-time workflows, and optimized performance, demonstrating real-world full-stack development skills.
+---
 
-🔹 Features
-# Core Functionality
+## Project Overview
 
-User Authentication with secure sign-up and login
+This application allows users to connect, communicate, and share content in real time.  
+It is designed to provide hands-on experience with scalable application architecture, modern authentication systems, and asynchronous background processing.
 
-Create, Edit & Delete Posts
+---
 
-Like and Share Posts
+##  Tech Stack
 
-User Profile Management
+- **Frontend:** React.js, HTML, CSS
+- **Backend:** Node.js, Express.js
+- **Database:** MongoDB
+- **Authentication:** Clerk
+- **Background Jobs:** Inngest
+- **Media Storage & Optimization:** ImageKit
 
-Follow / Unfollow Other Users
+---
 
-Responsive UI for Web and Mobile Screens
+## Key Features
 
-# Media & Performance
+###  User Authentication
+- Secure sign-up and sign-in using **Clerk**
+- User profile creation and management
+- Session handling and protected routes
 
-Image Upload & Optimization
+### Background Jobs
+- Background tasks and scheduled jobs using **Inngest**
+- Used for notifications, feed updates, and asynchronous processing
+- Improves application responsiveness and performance
 
-Efficient Media Storage
+### Media Storage & Optimization
+- Image uploads handled via **ImageKit**
+- Optimized image delivery for faster load times
+- High-quality image rendering across devices
 
-Fast Loading & Smooth Interface
+---
 
-# Technical Workflow
+## Core Social Features
 
-Authentication & user sessions
+- **Real-time chat and messaging**
+- **Post and feed system** for text and image-based content
+- **Follow / Unfollow** user functionality
+- **Friend request management**
+- **Story / status uploads** for time-based content sharing
+- **Search and discovery** of new users
 
-Full CRUD for posts & comments
+---
 
-Media handling with optimized delivery
+## Responsive Design
 
-Event-driven updates and background workflows
+- Fully responsive UI
+- Works seamlessly on desktop, tablet, and mobile devices
 
-# Tech Stack
+---
 
-Frontend -React.js,Tailwind CSS,React Router
-Backend - Node.js,Express.js
-Database-MongoDB with Mongoose ODM
+## Learning Outcomes
 
-Authentication & Services-Clerk (Authentication & User Management),Inngest (Event-Driven Workflows),ImageKit (Image Storage & Optimization)
+- Hands-on experience with **full stack MERN development**
+- Understanding of **real-world authentication systems**
+- Implementation of **background jobs and async workflows**
+- Media optimization and scalable backend design
+- Clean API integration between frontend and backend
 
-Tools
-
-Git & GitHub
-
-VS Code
-
-Postman / Insomnia for API testing
-
-# Features Breakdown
-
- -Secure Authentication: Powered by Clerk for user login and session management
-
- -Optimized Media Upload: Images stored and delivered via ImageKit
-
-- Background Jobs & Events: Inngest for scalable event handling
-
--Clean Architecture: Modular frontend and backend code structure
-
-- Responsive UI: Works seamlessly on desktop and mobile
-
-# Getting Started
-1. Clone the repo
-git clone https://github.com/aditiraipure/pingUp.git
-
-2. Install dependencies
-npm install
-
-3. Configure environment
-
-Create a .env file with:
-
-MONGO_URI = <your MongoDB URI>
-CLERK_API_KEY = <Clerk API key>
-IMAGEKIT_PRIVATE_KEY = <ImageKit key>
-INGNEST_SECRET = <Inngest secret>
-
-4. Start the App
-
-Backend - npm run server
-
-Frontend-npm start
-
-# How It Works
-
-User registers or logs in via Clerk.
-
-User creates posts with text & media.
-
-Posts are saved to MongoDB and optimized via ImageKit.
-
-Inngest handles background workflows and events.
-
-Users interact in real time with a responsive UI.
-
-# Learning & Impact
-
-By building PingUp, you learn:
-
-Connecting frontend & backend in a real project
-
-Using third-party tools for authentication & media
-
-Event-based workflows and app optimization
-
-Full MERN stack development with best practices
-
-# Future Enhancements
-
-Add comments and nested replies
-
-Real-time chat or notifications
-
-“Stories” feature with auto-expiry
-
-Progressive Web App (PWA) support
-
-# Acknowledgements
-
-Project built using ideas from MERN tutorials and adapted with custom logic, authentication, and media workflows.
+---
