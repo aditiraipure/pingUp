@@ -3,14 +3,12 @@
 A fully functional **Social Media Web Application** built using the **MERN Stack (MongoDB, Express.js, React.js, and Node.js)**.  
 This project demonstrates real-world full stack development concepts including authentication, background jobs, media optimization, and core social networking features.
 
----
 
 ## Project Overview
 
 This application allows users to connect, communicate, and share content in real time.  
 It is designed to provide hands-on experience with scalable application architecture, modern authentication systems, and asynchronous background processing.
 
----
 
 ##  Tech Stack
 
@@ -21,7 +19,6 @@ It is designed to provide hands-on experience with scalable application architec
 - **Background Jobs:** Inngest
 - **Media Storage & Optimization:** ImageKit
 
----
 
 ## Key Features
 
@@ -40,8 +37,6 @@ It is designed to provide hands-on experience with scalable application architec
 - Optimized image delivery for faster load times
 - High-quality image rendering across devices
 
----
-
 ## Core Social Features
 
 - **Real-time chat and messaging**
@@ -51,14 +46,12 @@ It is designed to provide hands-on experience with scalable application architec
 - **Story / status uploads** for time-based content sharing
 - **Search and discovery** of new users
 
----
 
 ## Responsive Design
 
 - Fully responsive UI
 - Works seamlessly on desktop, tablet, and mobile devices
 
----
 
 ## Learning Outcomes
 
@@ -68,4 +61,3 @@ It is designed to provide hands-on experience with scalable application architec
 - Media optimization and scalable backend design
 - Clean API integration between frontend and backend
 
----
