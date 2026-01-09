@@ -31,7 +31,7 @@ It is designed to provide hands-on experience with scalable application architec
 ## Implemented Features (So Far)
 
 ## User Authentication
-**Sign-up and sign-in using Clerk
+- **Sign-up and sign-in using Clerk**
 -Session handling and protected routes
 -Basic user profile setup
 
