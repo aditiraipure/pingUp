@@ -28,28 +28,28 @@ It is designed to provide hands-on experience with scalable application architec
 - **Media Storage & Optimization:** ImageKit
 
 
-## Implemented Features (So Far)
+# Implemented Features (So Far)
 
 ## User Authentication
 - **Sign-up and sign-in using Clerk**
--Session handling and protected routes
--Basic user profile setup
+- **Session handling and protected routes**
+- **Basic user profile setup**
 
 ## Media Handling
--Image upload integration using ImageKit
--Optimized image delivery
+- **Image upload integration using ImageKit**
+- **Optimized image delivery**
 
 ## Backend & Architecture
--REST API structure using Express.js
--MongoDB schema design
--Async background job setup using Inngest
+- **REST API structure using Express.js**
+- **MongoDB schema design**
+- **Async background job setup using Inngest**
 
 ## Features Under Development
--Post & feed system
--Friend request management
--Story / status uploads
--Search and user discovery
--UI improvements and performance optimization
+- **Post & feed system**
+- **Friend request management**
+- **Story / status uploads**
+- **Search and user discovery**
+- **UI improvements and performance optimization**
 
 ## Core Social Features
 
@@ -63,8 +63,8 @@ It is designed to provide hands-on experience with scalable application architec
 
 ## Responsive Design
 
-- Fully responsive UI
-- Works seamlessly on desktop, tablet, and mobile devices
+- **Fully responsive UI**
+- **Works seamlessly on desktop, tablet, and mobile devices**
 
 
 ## Learning Outcomes
