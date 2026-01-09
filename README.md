@@ -1,7 +1,15 @@
-# pingUP - Social Media Web Application (MERN Stack)
+# pingUP - Social Media Web Application (In Progress)
 
-A fully functional **Social Media Web Application** built using the **MERN Stack (MongoDB, Express.js, React.js, and Node.js)**.  
+**Note:** This project is currently in progress and is being developed as part of my learning journey in full-stack MERN development. Some features are under active development.
+
+
+A work-in-progress Social Media Web Application built using the MERN Stack (MongoDB, Express.js, React.js, and Node.js).
 This project demonstrates real-world full stack development concepts including authentication, background jobs, media optimization, and core social networking features.
+
+# Project Status
+
+Current Status: In Progress / Learning Project
+Some features are implemented, while others are under active development and improvement.
 
 
 ## Project Overview
@@ -20,22 +28,28 @@ It is designed to provide hands-on experience with scalable application architec
 - **Media Storage & Optimization:** ImageKit
 
 
-## Key Features
+# Implemented Features (So Far)
 
-###  User Authentication
-- Secure sign-up and sign-in using **Clerk**
-- User profile creation and management
-- Session handling and protected routes
+# User Authentication
+-Sign-up and sign-in using Clerk
+-Session handling and protected routes
+-Basic user profile setup
 
-### Background Jobs
-- Background tasks and scheduled jobs using **Inngest**
-- Used for notifications, feed updates, and asynchronous processing
-- Improves application responsiveness and performance
+# Media Handling
+-Image upload integration using ImageKit
+-Optimized image delivery
 
-### Media Storage & Optimization
-- Image uploads handled via **ImageKit**
-- Optimized image delivery for faster load times
-- High-quality image rendering across devices
+# Backend & Architecture
+-REST API structure using Express.js
+-MongoDB schema design
+-Async background job setup using Inngest
+
+#Features Under Development
+-Post & feed system
+-Friend request management
+-Story / status uploads
+-Search and user discovery
+-UI improvements and performance optimization
 
 ## Core Social Features
 
