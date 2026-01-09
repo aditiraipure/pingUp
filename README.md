@@ -6,7 +6,7 @@
 A work-in-progress Social Media Web Application built using the MERN Stack (MongoDB, Express.js, React.js, and Node.js).
 This project demonstrates real-world full stack development concepts including authentication, background jobs, media optimization, and core social networking features.
 
-# Project Status
+## Project Status
 
 Current Status: In Progress / Learning Project
 Some features are implemented, while others are under active development and improvement.
@@ -18,7 +18,7 @@ This application allows users to connect, communicate, and share content in real
 It is designed to provide hands-on experience with scalable application architecture, modern authentication systems, and asynchronous background processing.
 
 
-##  Tech Stack
+## Tech Stack
 
 - **Frontend:** React.js, HTML, CSS
 - **Backend:** Node.js, Express.js
@@ -28,23 +28,23 @@ It is designed to provide hands-on experience with scalable application architec
 - **Media Storage & Optimization:** ImageKit
 
 
-# Implemented Features (So Far)
+## Implemented Features (So Far)
 
-# User Authentication
+## User Authentication
 -Sign-up and sign-in using Clerk
 -Session handling and protected routes
 -Basic user profile setup
 
-# Media Handling
+## Media Handling
 -Image upload integration using ImageKit
 -Optimized image delivery
 
-# Backend & Architecture
+## Backend & Architecture
 -REST API structure using Express.js
 -MongoDB schema design
 -Async background job setup using Inngest
 
-#Features Under Development
+## Features Under Development
 -Post & feed system
 -Friend request management
 -Story / status uploads
