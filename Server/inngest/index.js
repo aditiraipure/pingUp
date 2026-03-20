@@ -1,7 +1,7 @@
 import { Inngest } from "inngest";
 
 // Create a client to send and receive events
-export const inngest = new Inngest({ id: "my-app" });
+export const inngest = new Inngest({ id: "pingUp-app" });
 
 const syncUserCreation =  inngest.createFunction(
     {id:'sync-user-from-clerk'},
@@ -42,7 +42,7 @@ const syncUserUpdation =  inngest.createFunction(
     
 );
 
-const syncUserdeletion =  inngest.createFunction(
+const syncUserDeletion =  inngest.createFunction(
     {id:'delete-user-with-clerk'},
     {event:'clerk/user.deleted'},
     async ({ event }) => {
@@ -56,5 +56,5 @@ const syncUserdeletion =  inngest.createFunction(
 export const functions = [
     syncUserCreation,
     syncUserUpdation,
-    syncUserdeletion
+    syncUserDeletion
 ];
