@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
-import { useUser } from "@clerk/clerk-react";
+import { useUser, useAuth } from "@clerk/clerk-react";
 import { Toaster } from "react-hot-toast";
 
 // Pages
@@ -15,17 +15,28 @@ import CreatePost from "./pages/CreatePost";
 import Layout from "./pages/Layout";
 
 const App = () => {
+  // 🔹 Clerk hooks (user info + token)
   const { user } = useUser();
+  const { getToken } = useAuth();
+
+  // 🔹 Runs when user changes
+  useEffect(() => {
+    if (user) {
+      // get JWT token from Clerk
+      getToken().then((token) => console.log(token));
+    }
+  }, [user, getToken]); // dependencies
 
   return (
     <>
+      {/* 🔹 Toast notifications */}
       <Toaster position="top-right" reverseOrder={false} />
 
       <Routes>
-        {/* Public route */}
+        {/* 🔹 Public route (login page) */}
         {!user && <Route path="/" element={<Login />} />}
 
-        {/* Protected routes */}
+        {/* 🔹 Protected routes (only if user logged in) */}
         {user && (
           <Route path="/" element={<Layout />}>
             {/* Feed */}
@@ -51,7 +62,7 @@ const App = () => {
           </Route>
         )}
 
-        {/* Fallback: redirect unknown paths to Feed (optional) */}
+        {/* 🔹 Fallback route */}
         <Route path="*" element={user ? <Feed /> : <Login />} />
       </Routes>
     </>
