@@ -285,16 +285,13 @@ export const acceptConnectionRequest = async (req, res) => {
 export const getUserProfile = async (req, res) => {
   try {
     const { profileId } = req.body;
-
-    const id = profileId || req.auth().userId;
-
-    const profile = await User.findById(id);
+    const profile = await User.findOne({ _id: profileId });
 
     if (!profile) {
       return res.json({success:false,message:'User not found'});
     }
 
-    const posts = await Post.find({ user: id }).populate('user');
+    const posts = await Post.find({ user: profileId }).populate('user');
 
     res.json({success:true,profile,posts});
     console.log("Profile:", profile);
@@ -304,3 +301,4 @@ export const getUserProfile = async (req, res) => {
     res.json({success:false,message:error.message});
   }
 };
+// create post
