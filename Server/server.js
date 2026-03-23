@@ -8,6 +8,7 @@ import { inngest, functions } from './inngest/index.js';
 import { serve } from "inngest/express";
 import { clerkMiddleware } from '@clerk/express'
 import userRouter from './routes/userRoutes.js';
+import postRouter from './routes/postRoutes.js';
 
 const app = express();
 await connectDB();
@@ -27,6 +28,7 @@ app.use('/api/inngest',
 );
 
 app.use('/api/user', userRouter);
+app.use('/api/post', postRouter);
 
 const PORT = process.env.PORT || 4000;
 
