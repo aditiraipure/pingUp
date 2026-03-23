@@ -1,4 +1,4 @@
-import imagekit from '../configs/imagekit.js'; 
+import imagekit from "../configs/imageKit.js";
 import Post from '../models/Post.js';             
 import User from '../models/User.js';            
 

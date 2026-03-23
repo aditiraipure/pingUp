@@ -1,5 +1,5 @@
 import User from "../models/User.js";
-import imagekit from "../configs/imagekit.js";
+import imagekit from "../configs/imageKit.js";
 import Story from "../models/story.js";
 import { inngest } from "../inngest/index.js";
 import fs from "fs";
