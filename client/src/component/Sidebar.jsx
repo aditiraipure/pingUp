@@ -1,15 +1,14 @@
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom";
 import MenuItems from "./MenuItems";
-import { assets, dummyUserData } from "../assets/assets";
+import { assets } from "../assets/assets";
 import { CirclePlus, LogOut } from "lucide-react";
-import {UserButton , useClerk} from "@clerk/clerk-react";
-
+import { UserButton, useClerk } from "@clerk/clerk-react";
+import { useSelector } from "react-redux";
 
 const Sidebar = ({ sideBarOpen, setSidebarOpen }) => {
-
-    const navigate = useNavigate();
-    const user = dummyUserData
-    const { signOut } = useClerk();
+  const navigate = useNavigate();
+  const user = useSelector((state) => state.user.value);
+  const { signOut } = useClerk();
 
   return (
     <div
@@ -40,17 +39,18 @@ const Sidebar = ({ sideBarOpen, setSidebarOpen }) => {
       <div className="flex gap-2 items-center cursor-pointer">
         <UserButton />
         <div>
-          <h1 className="text-sm font-medium">{user.full_name} </h1>
-          <p className="text-xs text-gray-500">@{user.username}</p>
+          <h1 className="text-sm font-medium">{user?.full_name} </h1>
+          <p className="text-xs text-gray-500">@{user?.username}</p>
         </div>
-          <div className="ml-10">
-            <LogOut
-              className="w-4.5 text-gray-400 hover:text-gray-700 transition cursor-pointer"
-              onClick={signOut}
-            />
-          </div>
+        <div className="ml-10">
+          <LogOut
+            className="w-4.5 text-gray-400 hover:text-gray-700 transition cursor-pointer"
+            onClick={signOut}
+          />
+        </div>
       </div>
     </div>
   );
-}
+};
+
 export default Sidebar;

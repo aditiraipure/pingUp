@@ -2,6 +2,8 @@ import React, { useEffect } from "react";
 import { Route, Routes } from "react-router-dom";
 import { useUser, useAuth } from "@clerk/clerk-react";
 import { Toaster } from "react-hot-toast";
+import { useDispatch } from "react-redux";
+import { fetchUser } from "./features/userSlice.js";
 
 // Pages
 import Login from "./pages/Login";
@@ -14,18 +16,25 @@ import Profile from "./pages/Profile";
 import CreatePost from "./pages/CreatePost";
 import Layout from "./pages/Layout";
 
+
 const App = () => {
-  // 🔹 Clerk hooks (user info + token)
   const { user } = useUser();
   const { getToken } = useAuth();
+  const dispatch = useDispatch();
 
-  // 🔹 Runs when user changes
+
   useEffect(() => {
-    if (user) {
-      // get JWT token from Clerk
-      getToken().then((token) => console.log(token));
+
+    const fetchData = async () => {
+        if (user) {
+           const token = await getToken();
+         dispatch(fetchUser(token));
+        getToken().then((token) => console.log(token));
+        }
     }
-  }, [user, getToken]); // dependencies
+    fetchData();
+  
+  }, [user, getToken,dispatch]); 
 
   return (
     <>

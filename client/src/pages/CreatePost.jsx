@@ -1,19 +1,45 @@
-import React, { useState } from "react"
-import { dummyUserData } from "../assets/assets"
+import React, { useState } from "react";
 import { X, Image as ImageIcon } from "lucide-react";
-import toast from 'react-hot-toast'
+import toast from "react-hot-toast";
+import { useSelector } from "react-redux";
 
 const CreatePost = () => {
+  const [content, setContent] = useState("");
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const [content,setContent] = useState('')
-  const [images , setImages] = useState([])
-  const [loading , setLoading] = useState(false)
+  const user = useSelector((state) => state.user?.value);
 
-  const handleSubmit = async()=>{
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      // basic validation
+      if (!content && images.length === 0) {
+        toast.error("Add content or image");
+        return;
+      }
 
-  }
+      // create form data
+      const formData = new FormData();
+      formData.append("content", content);
 
-  const user = dummyUserData
+      images.forEach((img) => {
+        formData.append("images", img);
+      });
+
+      // TODO: API call here (aapka backend route)
+      // await api.post("/api/post/create", formData)
+
+      setContent("");
+      setImages([]);
+    } catch (error) {
+      console.log(error);
+      throw error; // important for toast.promise
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to white">
       <div className="max-w-6xl mx-auto p-6">
@@ -25,19 +51,20 @@ const CreatePost = () => {
         </div>
 
         {/* form */}
-        <div className="max-w-xl bg0white p-4 sm:p-8 sm:pb-3 rounded-xl shadow-md space-y-4">
+        <div className="max-w-xl bg-white p-4 sm:p-8 sm:pb-3 rounded-xl shadow-md space-y-4">
           {/* header */}
           <div className="flex items-center gap-3">
             <img
-              src={user.profile_picture}
+              src={user?.profile_picture}
               alt=""
               className="w-12 h-12 rounded-full shadow"
             />
             <div>
-              <h2 className="font-semibold ">{user.full_name}</h2>
-              <p className="text-sm text-gray-500">@{user.username}</p>
+              <h2 className="font-semibold ">{user?.full_name}</h2>
+              <p className="text-sm text-gray-500">@{user?.username}</p>
             </div>
           </div>
+
           {/* text area */}
           <textarea
             className="w-full resize-none max-h-20 mt-4 text-sm outline-none placeholder-gray-400"
@@ -68,6 +95,7 @@ const CreatePost = () => {
               ))}
             </div>
           )}
+
           {/* bottom bar */}
           <div className="flex items-center justify-between pt-3 border-t border-gray-300">
             <label
@@ -83,15 +111,22 @@ const CreatePost = () => {
               accept="image/*"
               hidden
               multiple
-              onChange={(e) => setImages([...images, ...e.target.files])}
+              onChange={(e) =>
+                setImages([...images, ...Array.from(e.target.files)])
+              }
             />
 
-            <button disabled={loading} onClick={()=> toast.promise(handleSubmit(),{
-              loading:'uploading...',
-              success:<p>Post Added</p>,
-              error: <p>Post Not Added</p>
-            }
-            )} className="text-sm bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 active:scale-95 transition text-white font-medium px-8 py-2 rounded-md cursor-pointer">
+            <button
+              disabled={loading}
+              onClick={() =>
+                toast.promise(handleSubmit(), {
+                  loading: "uploading...",
+                  success: <p>Post Added</p>,
+                  error: <p>Post Not Added</p>,
+                })
+              }
+              className="text-sm bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 active:scale-95 transition text-white font-medium px-8 py-2 rounded-md cursor-pointer"
+            >
               Upload
             </button>
           </div>
@@ -99,5 +134,6 @@ const CreatePost = () => {
       </div>
     </div>
   );
-}
-export default CreatePost
+};
+
+export default CreatePost;

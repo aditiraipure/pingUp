@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema({
   profile_picture: { type: String, default: '' },
   cover_photo: { type: String, default: '' },
 
-  location: { type: String, default: '' }, // ✅ FIX (array hata diya)
+  location: { type: String, default: '' }, 
 
   followers: [{ type: String, ref: "User" }],
   following: [{ type: String, ref: "User" }],
