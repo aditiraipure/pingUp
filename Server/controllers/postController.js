@@ -1,7 +1,6 @@
-
-import imagekit from '../configs/imagekit.js';
-import Post from "../models/Post";
-import User from "../models/User";
+import imagekit from '../configs/imagekit.js'; 
+import Post from '../models/Post.js';             
+import User from '../models/User.js';            
 
 
 export const createPost = async (req,res) => {

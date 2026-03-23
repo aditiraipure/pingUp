@@ -1,14 +1,17 @@
 import User from "../models/User.js";
 import fs from 'fs';
-import imagekit from "../configs/imageKit.js";
+import imagekit from "../configs/imagekit.js";
+import Post from "../models/Post.js";
+import { inngest } from "../inngest/index.js";
+import Connection from "../models/Connections.js";
 
 export const getUser = async (req, res) => {
   try {
     const authData = req.auth();
-    console.log("Auth Data:", authData); // 👈 ये देखना है
+    console.log("Auth Data:", authData); 
 
     const { userId } = authData;
-    console.log("User ID:", userId); // 👈 ये भी
+    console.log("User ID:", userId);
 
     const user = await User.findOne({ _id: userId });
 
@@ -181,11 +184,11 @@ export const sendConnectionRequest = async (req, res) => {
     const { id } = req.body;
 
    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
-   const connectionRequest = await Connection.findOne({
+  const connectionRequest = await Connection.findOne({
     from_user_id: userId,
     to_user_id: id,
     createdAt: { $gte: last24Hours }
-   });
+  });
 
     if(connectionRequest && connectionRequest.length >=15){
       return res.json({success:false,message:'You have already sent 15 connection requests to this user in the last 24 hours'});
@@ -196,13 +199,20 @@ export const sendConnectionRequest = async (req, res) => {
         {from_user_id: id, to_user_id: userId}
       ],
       
-     });
+    });
 
-     if(!connection){await Connection.create({
+    if(!connection){
+      const newConnection = await Connection.create({
       from_user_id: userId,
       to_user_id: id,
-     })
-     return res.json({success:true,message:'Connection request sent successfully'});  
+    })
+
+    await inngest.send({
+      name:'app/connection-request',
+      data:{connectionId:newConnection._id}
+    })
+
+    return res.json({success:true,message:'Connection request sent successfully'});  
 
     }
     else if(connection && connection.status === 'accepted'){
@@ -270,3 +280,21 @@ export const acceptConnectionRequest = async (req, res) => {
     res.json({ success: false, message: 'Error fetching user data' });
   }
 }
+
+// get usrprofiles
+export const getUserProfile = async (req, res) => {
+    try {
+        const {profileId} = req.body;
+        const profile = await User.findById(profileId)
+        if(!profile){
+            return res.json({success:false,message:'User not found'});
+        }
+        const posts = await Post.find({user:profileId}).populate('user')
+        res.json({success:true,profile,posts});
+    } catch (error) {
+        console.log(error);
+        res.json({success:false,message:error.message});
+    }
+}
+
+// create post
