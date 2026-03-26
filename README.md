@@ -2,7 +2,6 @@
 
 A full-stack social media web application built using the MERN stack that enables users to connect, share content, and communicate in real time.
 
----
 
 ##  Features
 - User authentication and authorization (Clerk + JWT)
@@ -14,7 +13,6 @@ A full-stack social media web application built using the MERN stack that enable
 - User search and discovery
 - Notifications and background jobs (Inngest)
 
----
 
 ##  Tech Stack
 - React.js, Redux Toolkit, Tailwind CSS
@@ -26,8 +24,6 @@ A full-stack social media web application built using the MERN stack that enable
 - Axios (API handling)
 - Vercel (deployment)
 - Git, GitHub
-
----
 
 
 ##  Environment Variables
@@ -41,13 +37,10 @@ A full-stack social media web application built using the MERN stack that enable
   - VITE_CLERK_PUBLISHABLE_KEY=your_key
   - VITE_API_URL=http://localhost:5000
 
----
 
 ## Run Application
 - Backend: `npm run server`
 - Frontend: `npm run dev`
-
----
 
 ##  API Overview
 - Auth APIs – Authentication & session handling
@@ -56,26 +49,21 @@ A full-stack social media web application built using the MERN stack that enable
 - Chat APIs – Messaging system
 - Notification APIs – Background jobs via Inngest
 
----
-
 ##  Deployment
 - Deployed on Vercel for scalable cloud hosting
 - CI/CD enabled for seamless builds and updates
 
----
 
 ##  Performance Optimization
 - Improved responsiveness by 40%
 - Optimized MongoDB queries
 - Used async processing with Inngest
 
----
 
 ##  Security
 - Clerk-based authentication (JWT)
 - Protected routes and secure data handling
 
----
 
 ##  Core Features
 - Real-time chat and messaging
@@ -83,13 +71,11 @@ A full-stack social media web application built using the MERN stack that enable
 - Follow/Unfollow and friend requests
 - User search and discovery
 
----
 
 ##  Responsive Design
 - Fully responsive UI
 - Works on desktop, tablet, and mobile
 
----
 
 ## 📚 Learning Outcomes
 - Full-stack MERN development
@@ -97,7 +83,6 @@ A full-stack social media web application built using the MERN stack that enable
 - Real-time features and async workflows
 - State management using Redux Toolkit
 
----
 
 ##  Project Structure
 - /client → Frontend (React)
@@ -106,7 +91,6 @@ A full-stack social media web application built using the MERN stack that enable
 - /routes → API routes
 - /controllers → Business logic
 
----
 
 ##  Future Improvements
 - Push notifications
@@ -114,7 +98,3 @@ A full-stack social media web application built using the MERN stack that enable
 - Recommendation system
 - Media optimization
 
----
-
-## 👩‍💻 Author
-Aditi Raipure
