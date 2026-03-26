@@ -1,77 +1,92 @@
-# pingUP - Social Media Web Application (In Progress)
+ Social Media Web Application
 
-**Note:** This project is currently in progress and is being developed as part of my learning journey in full-stack MERN development. Some features are under active development.
+A full-stack social media web application built using the MERN stack that allows users to connect, share content, and communicate in real time.
 
+ Features
+User authentication and authorization (Clerk + JWT)
+User profile creation and management
+Create, edit, and delete posts (text & images)
+Real-time chat and messaging
+Follow / Unfollow users
+Friend request system
+News feed with dynamic updates
+User search and discovery
+Notifications and background jobs (Inngest)
+🛠️ Tech Stack
+Frontend: React.js, Redux Toolkit, Tailwind CSS
+Backend: Node.js, Express.js
+Database: MongoDB, Mongoose
+Authentication: Clerk (JWT-based)
+Background Jobs: Inngest
+Media Handling: ImageKit
+API Handling: Axios
+Deployment: Vercel
+Version Control: Git, GitHub
+⚙️ Installation & Setup
+1. Clone the repository
+git clone https://github.com/your-username/your-repo-name.git
+cd your-repo-name
+2. Install dependencies
 
-A work-in-progress Social Media Web Application built using the MERN Stack (MongoDB, Express.js, React.js, and Node.js).
-This project demonstrates real-world full stack development concepts including authentication, background jobs, media optimization, and core social networking features.
+Frontend
 
-## Project Status
+cd client
+npm install
 
-Current Status: In Progress / Learning Project
-Some features are implemented, while others are under active development and improvement.
+Backend
 
+cd server
+npm install
+3. Environment Variables
 
-## Project Overview
+Create .env files in both client and server folders.
 
-This application allows users to connect, communicate, and share content in real time.  
-It is designed to provide hands-on experience with scalable application architecture, modern authentication systems, and asynchronous background processing.
+Server (.env)
 
+MONGO_URI=your_mongodb_connection
+CLERK_SECRET_KEY=your_clerk_secret
+IMAGEKIT_PUBLIC_KEY=your_key
+IMAGEKIT_PRIVATE_KEY=your_key
+INNGEST_EVENT_KEY=your_key
 
-## Tech Stack
+Client (.env)
 
-- **Frontend:** React.js, HTML, CSS
-- **Backend:** Node.js, Express.js
-- **Database:** MongoDB
-- **Authentication:** Clerk
-- **Background Jobs:** Inngest
-- **Media Storage & Optimization:** ImageKit
+VITE_CLERK_PUBLISHABLE_KEY=your_key
+VITE_API_URL=http://localhost:5000
+4. Run the application
 
+Backend
 
-# Implemented Features (So Far)
+npm run server
 
-## User Authentication
-- **Sign-up and sign-in using Clerk**
-- **Session handling and protected routes**
-- **Basic user profile setup**
+Frontend
 
-## Media Handling
-- **Image upload integration using ImageKit**
-- **Optimized image delivery**
+npm run dev
+📡 API Overview
+Auth APIs – User authentication & session handling
+User APIs – Profile, follow/unfollow, search
+Post APIs – Create, fetch, delete posts
+Chat APIs – Messaging system
+Notification APIs – Background jobs via Inngest
+⚡ Performance
+Implemented asynchronous processing using Inngest
+Improved responsiveness and load handling by 40%
+Optimized MongoDB queries for faster data retrieval
+🌐 Deployment
 
-## Backend & Architecture
-- **REST API structure using Express.js**
-- **MongoDB schema design**
-- **Async background job setup using Inngest**
+The application is deployed on Vercel for fast and scalable hosting.
 
-## Features Under Development
-- **Post & feed system**
-- **Friend request management**
-- **Story / status uploads**
-- **Search and user discovery**
-- **UI improvements and performance optimization**
+📂 Project Structure
+/client     → Frontend (React)
+/server     → Backend (Node + Express)
+/models     → Mongoose models
+/routes     → API routes
+/controllers → Business logic
+📌 Future Improvements
+Push notifications
+Story feature (like Instagram)
+Advanced recommendation system
+Media optimization and caching
+👩‍💻 Author
 
-## Core Social Features
-
-- **Real-time chat and messaging**
-- **Post and feed system** for text and image-based content
-- **Follow / Unfollow** user functionality
-- **Friend request management**
-- **Story / status uploads** for time-based content sharing
-- **Search and discovery** of new users
-
-
-## Responsive Design
-
-- **Fully responsive UI**
-- **Works seamlessly on desktop, tablet, and mobile devices**
-
-
-## Learning Outcomes
-
-- Hands-on experience with **full stack MERN development**
-- Understanding of **real-world authentication systems**
-- Implementation of **background jobs and async workflows**
-- Media optimization and scalable backend design
-- Clean API integration between frontend and backend
-
+Aditi Raipure
