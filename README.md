@@ -1,4 +1,4 @@
-# 📱 Social Media Web Application
+# Social Media Web Application
 
 A full-stack social media web application built using the MERN stack that enables users to connect, share content, and communicate in real time.
 
