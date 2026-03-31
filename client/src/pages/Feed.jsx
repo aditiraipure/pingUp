@@ -1,24 +1,38 @@
 import React, { useEffect, useState } from 'react'
-import { dummyPostsData } from '../assets/assets'
+import toast from 'react-hot-toast'
 import Loading from '../component/Loading'
 import StoriesBar from '../component/StoriesBar'
 import PostCard from '../component/PostCard'
 import { assets } from '../assets/assets'
 import RecentMessages from '../component/RecentMessages'
-
-
+import { useAuth, useUser } from '@clerk/clerk-react'
+import api from '../api/axios'
 
 const Feed = () => {
 
    const [feeds , setFeeds] = useState([])
    const [loading , setLoading] = useState(false)
+   const { getToken } = useAuth();
+   const { user } = useUser();
 
-    
   const fetchFeeds = async () => {  
-    setLoading(true)
-    setFeeds(dummyPostsData)
-    setLoading(false)
-  }
+    try {
+      setLoading(true)
+      const {data} = await api.get('/api/post/feed' , {
+        headers : {Authorization:`Bearer ${await getToken()}`}
+      })
+      if(data.success){
+        setFeeds(data.posts)
+      }
+      else{
+        toast.error(data.message)
+      }
+    } catch (error) {
+      toast.error(error.message)
+      
+    }
+     setLoading(false)
+   }
 
   useEffect(() => {
     fetchFeeds();
@@ -47,11 +61,14 @@ const Feed = () => {
           <p className="text-slate-600">Email marketing</p>
           <p className="text-slate-600">SuperChange your marketing with a powerful , easy-t0-use platform built your own results</p>
         </div>
-       <RecentMessages/>
+        
+        {user && <RecentMessages />}
+        
       </div>
     </div>
   ) : (
     <Loading />
   );                         
 }
-export default Feed
+
+export default Feed;

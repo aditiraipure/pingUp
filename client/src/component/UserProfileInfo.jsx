@@ -1,6 +1,5 @@
 
 import { Calendar, MapPin, PenBox, Verified } from "lucide-react";
-import React from "react";
 import moment from 'moment'
 
 

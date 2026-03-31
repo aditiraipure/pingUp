@@ -7,16 +7,26 @@ const initialState = {
 }
 
 export const fetchUser = createAsyncThunk(
-    'user/fetchUser',
-    async (token) => { 
-        const { data } = await api.get('/api/user/data', {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        });
+  'user/fetchUser',
+  async (token) => { 
+    try {
+      const { data } = await api.get('/api/user/data', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
 
-        return data.success ? data.user : null;
+      if (!data.success) {
+        return {}; 
+      }
+
+      return data.user;
+
+    } catch (error) {
+      console.log(error);
+      return {}; 
     }
+  }
 )
 
 export const updateUser = createAsyncThunk(

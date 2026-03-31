@@ -4,7 +4,9 @@ import Connection from "../models/Connections.js";
 import sendEmail  from "../configs/nodeMailer.js";
 import Story from "../models/story.js";
 import Message from "../models/message.js";
+import dotenv from "dotenv";
 
+dotenv.config();
 // Create a client to send and receive events
 export const inngest = new Inngest({
   id: "pingUp-app",
@@ -125,6 +127,7 @@ const deleteStory = inngest.createFunction(
         const in24Hours = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
         await step.sleepUntil("wait-for-24-hours", in24Hours);
+        console.log("EVENT KEY:", process.env.INNGEST_EVENT_KEY);
 
         await step.run("delete-story", async()=>{
             await Story.findByIdAndDelete(storyId);
@@ -140,26 +143,35 @@ const getNotification = inngest.createFunction(
     async ({step}) => {
         const message = await Message.find({seen : false}).populate('to_user_id');
 
-        const unseenCount = {}
-        unseenCount[message.to_user_id._id] = (unseenCount[message.to_user_id._id] || 0) + 1;
+        const unseenCount = {};
 
-        for(const userId in unseenCount ){
-            const user = await User.findById(userId);
-            const subject = `You have ${unseenCount[userId]} unread messages!`;
-            const body = `<div style="font-family: Arial, sans-serif; padding: 20px; ">
-                <h2>Hi ${user.full_name},</h2>
-                <p>You have ${unseenCount[userId]} unread messages on PingUp!</p>
-                <p>Click <a href=${process.env.FRONTEND_URL}/messages" style ="color:#10b981">here</a> to view your messages.</p>
-                <br/>
-                <p>Thanks,<br/>The PingUp Team - Stay Connected</p>
-            </div>`;
+        for (const msg of message) {
+           const userId = msg.to_user_id && msg.to_user_id._id ? msg.to_user_id._id : msg.to_user_id;
+            if (!userId) continue;
 
-            await sendEmail({
-                to: user.email,
-                subject,
-                body
-            });
+            unseenCount[userId] = (unseenCount[userId] || 0) + 1;
         }
+
+       for(const userId in unseenCount ){
+    const user = await User.findById(userId);
+
+    if (!user) continue;  
+
+    const subject = `You have ${unseenCount[userId]} unread messages!`;
+    const body = `<div style="font-family: Arial, sans-serif; padding: 20px; ">
+        <h2>Hi ${user.full_name},</h2>
+        <p>You have ${unseenCount[userId]} unread messages on PingUp!</p>
+        <p>Click <a href=${process.env.FRONTEND_URL}/messages" style ="color:#10b981">here</a> to view your messages.</p>
+        <br/>
+        <p>Thanks,<br/>The PingUp Team - Stay Connected</p>
+    </div>`;
+
+    await sendEmail({
+        to: user.email,
+        subject,
+        body
+    });
+}
         return {message:'Notification sent '};
     }
 );

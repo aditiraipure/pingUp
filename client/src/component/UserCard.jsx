@@ -1,16 +1,69 @@
-import { MapPin, UserPlus, MessageCircle, Plus } from "lucide-react";
-import { useSelector } from "react-redux";
+import React, { useEffect } from "react";
+import { Search, MapPin, UserPlus, MessageCircle, Plus } from "lucide-react";
+import { useSelector, useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@clerk/clerk-react";
+import api from "../api/axios";
+import toast from "react-hot-toast";
+import { fetchUser } from "../features/userSlice.js";
 
 const UserCard = ({ user }) => {
-  const currentUser = useSelector((state) => state.user.value)
+  const currentUser = useSelector((state) => state.user.value);
+  const { getToken } = useAuth();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    getToken().then((token) => {
+      dispatch(fetchUser(token));
+    });
+  }, []);
 
   const handleFollow = async () => {
-    // follow logic later
+    try {
+      const { data } = await api.post(
+        `/api/user/follow`,
+        { id: user._id },
+        {
+          headers: { Authorization: `Bearer ${await getToken()}` },
+        },
+      );
+
+      if (data.success) {
+        toast.success(data.message);
+        dispatch(fetchUser(await getToken()));
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
   };
 
   const handleConnectionRequest = async () => {
-    // connection logic later
+    if (currentUser?.connections?.includes(user._id)) {
+      return navigate(`/messages/${user._id}`);
+    }
+
+    try {
+      const { data } = await api.post(
+        `/api/user/connect`,
+        { id: user._id },
+        {
+          headers: { Authorization: `Bearer ${await getToken()}` },
+        },
+      );
+
+      if (data.success) {
+        toast.success(data.message);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
   };
+
 
   return (
     <div className="p-4 pt-6 flex flex-col justify-between w-72 shadow border border-gray-200 rounded-md">

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { ArrowLeft, Upload, Type as TextIcon, Sparkle } from "lucide-react";
 import toast from "react-hot-toast";
-
+import { useAuth } from "@clerk/clerk-react";
+import api from "../api/axios";
 
 const StoryModel = ({ setShowModel, fetchStories }) => {
   const [mode, setMode] = useState("text");
@@ -10,32 +11,99 @@ const StoryModel = ({ setShowModel, fetchStories }) => {
   const [media, setMedia] = useState(null);
   const [mediaPreview, setMediaPreview] = useState(null);
 
-  const bgGradients = [
-    "linear-gradient(to right, #6366f1, #8b5cf6)", // Indigo → Purple
-    "linear-gradient(to right, #ec4899, #facc15)", // Pink → Yellow
-    "linear-gradient(to right, #22c55e, #3b82f6)", // Green → Blue
-    "linear-gradient(to right, #f43f5e, #f97316)", // Red → Orange
-    "linear-gradient(to right, #f472b6, #9333ea)", // Pink → Purple
-    "linear-gradient(to right, #facc15, #16a34a)", // Yellow → Green
-    "linear-gradient(to right, #06b6d4, #3b82f6)", // Cyan → Blue
-    "linear-gradient(to right, #f87171, #fb7185)", // Red → Pink
-    "linear-gradient(to right, #a3e635, #22c55e)", // Lime → Green
-    "linear-gradient(to right, #f59e0b, #ef4444)", // Orange → Red
-  ];
+  const { getToken } = useAuth();
+
+  const MAX_VIDEO_DURATION = 60;
+  const MAX_VIDEO_SIZE_MB = 50;
+
+ const bgGradients = [
+   "linear-gradient(to right, #a5b4fc, #c4b5fd)", // soft lavender-blue
+   "linear-gradient(to right, #fbcfe8, #fde68a)", // pastel pink-yellow
+   "linear-gradient(to right, #bbf7d0, #bfdbfe)", // mint blue
+   "linear-gradient(to right, #fecaca, #fed7aa)", // soft peach
+   "linear-gradient(to right, #e9d5ff, #fbcfe8)", // lilac pink
+   "linear-gradient(to right, #fde68a, #bbf7d0)", // soft yellow green
+   "linear-gradient(to right, #cffafe, #bfdbfe)", // aqua blue
+   "linear-gradient(to right, #fcd5ce, #fbcfe8)", // blush pink
+   "linear-gradient(to right, #d9f99d, #bbf7d0)", // light green
+   "linear-gradient(to right, #fde68a, #fecaca)", // warm pastel
+ ];
 
   const handleMediaUpload = (e) => {
     const file = e.target.files?.[0];
+
     if (file) {
-      setMedia(file);
-      setMediaPreview(URL.createObjectURL(file));
-      setMode("media");
+      if (file.type.startsWith("video")) {
+        if (file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
+          toast.error(`video file size cannot exceed ${MAX_VIDEO_SIZE_MB} MB`);
+          setMedia(null);
+          setMediaPreview(null);
+          return;
+        }
+
+        const video = document.createElement("video");
+        video.preload = "metadata";
+
+        video.onloadedmetadata = () => {
+          window.URL.revokeObjectURL(video.src);
+
+          if (video.duration > MAX_VIDEO_DURATION) {
+            toast.error("video duration cannot exceed 1 min");
+            setMedia(null);
+            setMediaPreview(null);
+          } else {
+            setMedia(file);
+            setMediaPreview(URL.createObjectURL(file));
+            setText("");
+            setMode("media");
+          }
+        };
+
+        video.src = URL.createObjectURL(file);
+      } else if (file.type.startsWith("image")) {
+        setMedia(file);
+        setMediaPreview(URL.createObjectURL(file));
+        setText("");
+        setMode("media");
+      }
     }
   };
 
   const handleCreateStory = async () => {
-    console.log({ mode, text, media, background });
-    fetchStories?.();
-    setShowModel(false);
+    const media_type =
+      mode === "media"
+        ? media?.type.startsWith("image")
+          ? "image"
+          : "video"
+        : "text";
+
+    if (media_type === "text" && !text) {
+      throw new Error("please enter some text");
+    }
+
+    let formData = new FormData();
+    formData.append("content", text);
+    formData.append("media_type", media_type);
+    formData.append("media", media);
+    formData.append("background_color", background);
+
+    const token = await getToken();
+
+    try {
+      const { data } = await api.post("/api/story/create", formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (data.success) {
+        setShowModel(false);
+        toast.success("Story uploaded!");
+        fetchStories();
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
   };
 
   return (
@@ -46,7 +114,6 @@ const StoryModel = ({ setShowModel, fetchStories }) => {
           <button
             onClick={() => setShowModel(false)}
             className="text-gray-300 hover:text-white transition-colors p-2 rounded-full hover:bg-gray-700"
-            aria-label="Back"
           >
             <ArrowLeft size={22} />
           </button>
@@ -56,14 +123,12 @@ const StoryModel = ({ setShowModel, fetchStories }) => {
           <span className="w-8" />
         </div>
 
-        {/* Story Preview */}
+        {/* Preview */}
         <div
           className="rounded-xl mt-6 mx-6 mb-4 h-64 flex items-center justify-center relative transition-all duration-300 overflow-hidden"
           style={{
             background:
               mode === "text" ? background || bgGradients[0] : "transparent",
-            backgroundSize: "cover",
-            backgroundPosition: "center",
           }}
         >
           {mode === "text" && (
@@ -82,7 +147,7 @@ const StoryModel = ({ setShowModel, fetchStories }) => {
             (media?.type.startsWith("image") ? (
               <img
                 src={mediaPreview}
-                alt="Media Preview"
+                alt="preview"
                 className="object-cover w-full h-full"
               />
             ) : (
@@ -94,7 +159,7 @@ const StoryModel = ({ setShowModel, fetchStories }) => {
             ))}
         </div>
 
-        {/* Gradient Buttons */}
+        {/* Background options */}
         {mode === "text" && (
           <div className="flex mt-8 gap-2 px-6 pb-6 flex-wrap">
             {bgGradients.map((gradient) => (
@@ -110,7 +175,7 @@ const StoryModel = ({ setShowModel, fetchStories }) => {
           </div>
         )}
 
-        {/* Mode Switch */}
+        {/* Mode switch */}
         <div className="flex gap-2 mt-4">
           <button
             onClick={() => {
@@ -143,11 +208,15 @@ const StoryModel = ({ setShowModel, fetchStories }) => {
           </label>
         </div>
 
-        <button onClick={()=> toast.promise(handleCreateStory(),{
-          loading : 'Saving..',
-          success: <p>Story Added</p>,
-          error : e=> <p>{e.message}</p>,
-        })} className="flex items-center justify-center gap-2 text-white py-3 px-6 m-4 mx-auto rounded bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-600 active:scale-95 transition cursor-pointer">
+        {/* Submit */}
+        <button
+          onClick={() =>
+            toast.promise(handleCreateStory(), {
+              loading: "Saving..",
+            })
+          }
+          className="flex items-center justify-center gap-2 text-white py-3 px-6 m-4 mx-auto rounded bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-600 active:scale-95 transition cursor-pointer"
+        >
           <Sparkle size={18} /> Create Story
         </button>
       </div>

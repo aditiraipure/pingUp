@@ -36,18 +36,20 @@ const Sidebar = ({ sideBarOpen, setSidebarOpen }) => {
         </Link>
       </div>
 
-      <div className="flex gap-2 items-center cursor-pointer">
-        <UserButton />
-        <div>
-          <h1 className="text-sm font-medium">{user?.full_name} </h1>
-          <p className="text-xs text-gray-500">@{user?.username}</p>
+      <div className="w-full border-t border-gray-200 p-4 px-7 flex items-center justify-between">
+        <div className="flex gap-2 items-center cursor-pointer">
+          <UserButton />
+
+          <div>
+            <h1 className="text-sm font-medium">{user.full_name}</h1>
+            <p className="text-xs text-gray-500">@{user.username}</p>
+          </div>
         </div>
-        <div className="ml-10">
-          <LogOut
-            className="w-4.5 text-gray-400 hover:text-gray-700 transition cursor-pointer"
-            onClick={signOut}
-          />
-        </div>
+
+        <LogOut
+          className="w-4.5 text-gray-400 hover:text-gray-700 transition cursor-pointer"
+          onClick={signOut}
+        />
       </div>
     </div>
   );

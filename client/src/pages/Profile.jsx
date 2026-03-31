@@ -1,30 +1,53 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { dummyUserData ,dummyPostsData } from "../assets/assets";
 import UserProfileInfo from "../component/UserProfileInfo";
 import PostCard from "../component/PostCard";
 import { Link } from "react-router-dom";
 import moment from "moment";
 import ProfileModel from "../component/ProfileModel";
+import {useAuth} from '@clerk/clerk-react'
+import api from '../api/axios'
+import toast from 'react-hot-toast'
+import { useSelector } from "react-redux";
+
 
 
 const Profile = () => {
+  const currentUser = useSelector((state)=>state.user.value)
+  const {getToken} =  useAuth();
   const { profileId } = useParams();
   const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
   const [activeTab, setActiveTab] = useState("posts");
   const [showEdit, setShowEdit] = useState(false);
 
-  const fetchUser = async () => {
-    // Later you can fetch by profileId if needed
-    setUser(dummyUserData);
-    setPosts(dummyPostsData);
+  const fetchUser = async (profileId) => {
+    const token =  await getToken()
+    try {
+      const {data} = await api.post(`/api/user/profile`,{profileId},{
+        headers : {Authorization : `Bearer ${token}`}
+      })
+      if(data.success){
+        setUser(data.profile)
+        setPosts(data.posts)
+      }else{
+        toast.error(data.message)
+      }
+    } catch (error) {
+      toast.error(error.message)
+      
+    }
   };
 
-  useEffect(() => {
-    fetchUser();
-  }, [profileId]);
+useEffect(() => {
+  if (profileId) {
+    fetchUser(profileId);
+  } else {
+    fetchUser(currentUser._id);
+  }
+}, [profileId, currentUser]);
+
 
   return user ? (
     <div className="relative h-full overflow-y-scroll bg-gray-50 p-6">

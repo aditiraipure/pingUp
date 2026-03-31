@@ -1,22 +1,52 @@
 import { useState } from "react";
 import { Pencil } from "lucide-react";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { updateUser } from "../features/userSlice";
+import { useAuth } from "@clerk/clerk-react";
+import toast from "react-hot-toast";
 
-export const ProfileModel = ({setShowEdit}) => {
+export const ProfileModel = ({ setShowEdit }) => {
+  const dispatch = useDispatch();
+  const { getToken } = useAuth();
   const user = useSelector((state) => state.user.value);
 
-  const [editForm , setEditForm] = useState({
-    username : user.username,
-    bio:user.bio,
-    location:user.location,
-    profile_picture:null,
-    cover_photo :null,
-    full_name:user.full_name,
-  })
+  const [editForm, setEditForm] = useState({
+    username: user.username,
+    bio: user.bio,
+    location: user.location,
+    profile_picture: null,
+    cover_photo: null,
+    full_name: user.full_name,
+  });
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
-  }
+    try {
+      const userData = new FormData();
+      const {
+        full_name,
+        username,
+        bio,
+        location,
+        profile_picture,
+        cover_photo,
+      } = editForm;
+
+      userData.append("username", username);
+      userData.append("bio", bio);
+      userData.append("location", location); 
+      userData.append("full_name", full_name);
+      profile_picture && userData.append("profile", profile_picture);
+      cover_photo && userData.append("cover", cover_photo);
+
+      const token = await getToken();
+      dispatch(updateUser({ userData, token }));
+      setShowEdit(false);
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
   return (
     <div className="fixed top-0 bottom-0 left-0 right-0 z-110 h-screen overflow-y-scroll bg-black/50">
       <div className="max-w-2xl sm:py-6 mx-auto">
@@ -24,7 +54,17 @@ export const ProfileModel = ({setShowEdit}) => {
           <h1 className="text-2xl font-bold text-gray-900 mb-6">
             Edit Profile
           </h1>
-          <form className="space-y-4" onSubmit={handleSaveProfile} action="">
+
+          <form
+            className="space-y-4"
+            onSubmit={(e) =>
+              toast.promise(handleSaveProfile(e), {
+                loading: "Saving...",
+                success: "Profile updated",
+                error: "Error updating",
+              })
+            }
+          >
             {/* profile picture */}
             <div className="flex flex-col items-start gap-3">
               <label
@@ -37,7 +77,6 @@ export const ProfileModel = ({setShowEdit}) => {
                   type="file"
                   accept="image/*"
                   id="profile_picture"
-                  className="w-full p-3 border border-gray-200 rounded-lg"
                   onChange={(e) =>
                     setEditForm({
                       ...editForm,
@@ -55,16 +94,17 @@ export const ProfileModel = ({setShowEdit}) => {
                     alt=""
                     className="w-24 h-24 rounded-full object-cover mt-2"
                   />
-                  <div className="absolute hidden group-hover/ profile:flex top-0 left-0 right-0 bottom-0 bg-black/20 rounded-full items-center justify-center">
-                    <Pencil className="w-5 h-5 text-while" />
+                  <div className="absolute hidden group-hover/profile:flex top-0 left-0 right-0 bottom-0 bg-black/20 rounded-full items-center justify-center">
+                    <Pencil className="w-5 h-5 text-white" />
                   </div>
                 </div>
               </label>
             </div>
+
             {/* cover_photo */}
             <div className="flex flex-col items-start gap-3">
               <label
-                htmlFor="cover_photo"
+                htmlFor="cover_picture" // fixed
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
                 Cover Photo
@@ -72,8 +112,7 @@ export const ProfileModel = ({setShowEdit}) => {
                   hidden
                   type="file"
                   accept="image/*"
-                  id="cover_picture"
-                  className="w-full p-3 border border-gray-200 rounded-lg"
+                  id="cover_picture" // match id
                   onChange={(e) =>
                     setEditForm({
                       ...editForm,
@@ -97,16 +136,15 @@ export const ProfileModel = ({setShowEdit}) => {
                 </div>
               </label>
             </div>
+
+            {/* Name */}
             <div>
-              <label
-                className="block text-sm font-medium text-gray-700 mb-1"
-                htmlFor=""
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Name
               </label>
               <input
                 type="text"
-                className="w-full p-3 border border-gray-200  rounded-lg"
+                className="w-full p-3 border border-gray-200 rounded-lg"
                 placeholder="Please enter your full name"
                 onChange={(e) =>
                   setEditForm({ ...editForm, full_name: e.target.value })
@@ -114,16 +152,15 @@ export const ProfileModel = ({setShowEdit}) => {
                 value={editForm.full_name}
               />
             </div>
+
+            {/* Username */}
             <div>
-              <label
-                className="block text-sm font-medium text-gray-700 mb-1"
-                htmlFor=""
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Username
               </label>
               <input
                 type="text"
-                className="w-full p-3 border border-gray-200  rounded-lg"
+                className="w-full p-3 border border-gray-200 rounded-lg"
                 placeholder="Please enter your username"
                 onChange={(e) =>
                   setEditForm({ ...editForm, username: e.target.value })
@@ -131,33 +168,31 @@ export const ProfileModel = ({setShowEdit}) => {
                 value={editForm.username}
               />
             </div>
+
+            {/* Bio */}
             <div>
-              <label
-                className="block text-sm font-medium text-gray-700 mb-1"
-                htmlFor=""
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Bio
               </label>
               <textarea
                 rows={3}
-                className="w-full p-3 border border-gray-200  rounded-lg"
-                placeholder="Please enter your username"
+                className="w-full p-3 border border-gray-200 rounded-lg"
+                placeholder="Please enter your bio"
                 onChange={(e) =>
                   setEditForm({ ...editForm, bio: e.target.value })
                 }
                 value={editForm.bio}
               />
             </div>
+
+            {/* Location */}
             <div>
-              <label
-                className="block text-sm font-medium text-gray-700 mb-1"
-                htmlFor=""
-              >
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Location
               </label>
               <input
                 type="text"
-                className="w-full p-3 border border-gray-200  rounded-lg"
+                className="w-full p-3 border border-gray-200 rounded-lg"
                 placeholder="Please enter your location"
                 onChange={(e) =>
                   setEditForm({ ...editForm, location: e.target.value })
@@ -165,6 +200,7 @@ export const ProfileModel = ({setShowEdit}) => {
                 value={editForm.location}
               />
             </div>
+
             <div className="flex justify-end space-x-3 pt-6">
               <button
                 onClick={() => setShowEdit(false)}
@@ -185,5 +221,6 @@ export const ProfileModel = ({setShowEdit}) => {
       </div>
     </div>
   );
-}
-export default ProfileModel
+};
+
+export default ProfileModel;

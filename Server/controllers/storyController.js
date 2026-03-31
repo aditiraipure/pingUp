@@ -3,6 +3,7 @@ import imagekit from "../configs/imageKit.js";
 import Story from "../models/story.js";
 import { inngest } from "../inngest/index.js";
 import fs from "fs";
+
 // add user story
 export const addUserStory = async (req, res) => {
     try {
@@ -29,9 +30,9 @@ export const addUserStory = async (req, res) => {
         });
       
         await inngest.send({
-            name:'app/delete-story',
-            data:{storyId:story._id}
-        })
+    name:'app/story-delete',   
+    data:{storyId:story._id}
+})
 
         res.json({success:true,message:"Story uploaded",story});
     } catch (error) {

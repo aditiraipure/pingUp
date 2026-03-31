@@ -1,8 +1,10 @@
 import imagekit from "../configs/imageKit.js";
 import Post from '../models/Post.js';             
-import User from '../models/User.js';            
+import User from '../models/User.js';      
+import fs from "fs";
 
 
+// create post
 export const createPost = async (req,res) => {
     try {
         const {userId} = req.auth();
@@ -12,7 +14,7 @@ export const createPost = async (req,res) => {
         let image_urls = [];
         if(images.length){
             image_urls = await Promise.all(images.map(async (image) => {
-                const fileBuffer = FileSystem.readFileSync(image.path);
+                const fileBuffer = fs.readFileSync(image.path);
 
                 const response = await imagekit.upload({
         file: fileBuffer,
@@ -64,6 +66,85 @@ export const getPosts = async (req,res) => {
         res.json({success:false,message:error.message});
     }
 }
+
+// export const createPost = async (req, res) => {
+//   try {
+//     const { userId } = req.auth();
+//     const { content, post_type } = req.body;
+
+//     const images = req.files || []; 
+//     let image_urls = [];
+
+//     if (images.length > 0) {
+//       image_urls = await Promise.all(
+//         images.map(async (image) => {
+//           const fileBuffer = fs.readFileSync(image.path);
+
+//           const response = await imagekit.upload({
+//             file: fileBuffer,
+//             fileName: image.originalname,
+//             folder: "posts",
+//           });
+
+//           const url = imagekit.url({
+//             path: response.filePath,
+//             transformation: [
+//               {
+//                 quality: "auto",
+//                 format: "webp",
+//                 width: "1280",
+//               },
+//             ],
+//           });
+
+//           return url;
+//         })
+//       );
+//     }
+
+//     await Post.create({
+//       user: userId,
+//       content,
+//       image_urls, 
+//       post_type,
+//     });
+
+//     res.json({ success: true, message: "Post created successfully" });
+
+//   } catch (error) {
+//     console.log(error);
+//     res.json({ success: false, message: error.message });
+//   }
+// };
+
+// // get posts of user and his connections
+// export const getPosts = async (req, res) => {
+//   try {
+//     const { userId } = req.auth();
+
+//     const user = await User.findById(userId);
+
+//     const userIds = [userId, ...user.connections, ...user.following];
+
+//     const posts = await Post.find({ user: { $in: userIds } })
+//   .populate({
+//     path: "user",
+//     select: "full_name username profile_picture"
+//   })
+//   .sort({ createdAt: -1 });
+
+// // FIX: support old + new field
+// const updatedPosts = posts.map(post => ({
+//   ...post._doc,
+//   image_urls: post.image_urls?.length
+//     ? post.image_urls
+//     : post.image_url || []
+// }));
+
+// res.json({ success: true, posts: updatedPosts });
+//   }
+// };
+
 
 // like or unlike post
 export const likePost = async (req,res) => {

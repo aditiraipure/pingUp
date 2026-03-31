@@ -1,25 +1,55 @@
-import React, { useState } from "react";
-import { dummyConnectionsData } from "../assets/assets";
+import React, { useEffect, useState } from "react";
+// import { dummyConnectionsData } from "../assets/assets";
 import { Search } from "lucide-react";
 import UserCard from "../component/UserCard";
 import Loading from "../component/Loading";
+import { useAuth } from "@clerk/clerk-react";
+import api from "../api/axios";
+import toast from "react-hot-toast";
+import { useDispatch } from "react-redux";
+import { fetchUser } from "../features/userSlice.js";
 
 const Discover = () => {
   const [input, setInput] = useState("");
-  const [user, setUser] = useState(dummyConnectionsData);
+  const [user, setUser] = useState([]);
   const [loading, setLoading] = useState(false);
+  const { getToken } = useAuth();
+  const dispatch = useDispatch();
 
-  const handelSearch = async (e) => {
+  const handelSearch = (e) => {
     if (e.key === "Enter") {
-      // corrected
-      setUser([]);
-      setLoading(true);
-      setTimeout(() => {
-        setUser(dummyConnectionsData);
-        setLoading(false);
-      }, 1000);
+      (async () => {
+        try {
+          setUser([]);
+          setLoading(true);
+
+          const token = await getToken();
+
+          const { data } = await api.post(
+            `/api/user/discover`,
+            { input },
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          );
+
+          data.success ? setUser(data.users) : toast.error(data.message);
+
+          setInput("");
+        } catch (error) {
+          toast.error(error.message);
+        } finally {
+          setLoading(false);
+        }
+      })();
     }
   };
+
+  useEffect(() => {
+    getToken().then((token) => {
+      dispatch(fetchUser(token));
+    });
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -43,7 +73,7 @@ const Discover = () => {
                 type="text"
                 placeholder="Search with Meta AI"
                 className="pl-10 sm:pl-12 py-2 w-full border border-gray-300 rounded-md max-sm:text-sm"
-                onChange={(e) => setInput(e.target.value)} // corrected
+                onChange={(e) => setInput(e.target.value)}
                 value={input}
                 onKeyUp={handelSearch}
               />
@@ -54,7 +84,7 @@ const Discover = () => {
         {/* User Cards */}
         <div className="flex flex-wrap gap-6">
           {user.map((user) => (
-            <UserCard user={user} key={user.id} />
+            <UserCard user={user} key={user._id} />
           ))}
         </div>
 

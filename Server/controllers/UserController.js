@@ -19,7 +19,13 @@ export const getUser = async (req, res) => {
       return res.json({ success: false, message: 'User not found' });
     }
 
-    res.json({ success: true, user });
+   res.json({
+  success: true,
+  user: {
+    ...user._doc,
+    imageUrl: user.profile_picture
+  }
+});
 
   } catch (error) {
     console.error('Error:', error);
@@ -176,76 +182,164 @@ export const unfollowUser = async (req, res) => {
 };
 
 // send connection request  
+// 
 export const sendConnectionRequest = async (req, res) => {
   try {
     const { userId } = req.auth();
     const { id } = req.body;
 
-    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const connectionRequest = await Connection.findOne({
-      from_user_id: userId,
-      to_user_id: id,
-      createdAt: { $gte: last24Hours }
-    });
+    const user = await User.findById(userId);
+    const toUser = await User.findById(id);
 
-    if (connectionRequest && connectionRequest.length >= 15) {
-      return res.json({success:false,message:'You have already sent 15 connection requests to this user in the last 24 hours'});
+    if (
+      !user.following.includes(id) ||
+      !toUser.following.includes(userId)
+    ) {
+      return res.json({
+        success: false,
+        message: "Both users must follow each other first",
+      });
     }
 
-    const connection = await Connection.findOne({
-      $or:[
-        {from_user_id: userId, to_user_id: id},
-        {from_user_id: id, to_user_id: userId}
+    const existing = await Connection.findOne({
+      $or: [
+        { from_user_id: userId, to_user_id: id },
+        { from_user_id: id, to_user_id: userId },
       ],
     });
 
-    if (!connection) {
-      const newConnection = await Connection.create({
-        from_user_id: userId,
-        to_user_id: id,
-      });
-
-      await inngest.send({
-        name:'app/connection-request',
-        data:{connectionId:newConnection._id}
-      });
-
-      return res.json({success:true,message:'Connection request sent successfully'});  
-    }
-    else if (connection && connection.status === 'accepted') {
-      return res.json({success:false,message:'You are already connected with this user'});
+    if (existing) {
+      if (existing.status === "accepted") {
+        return res.json({ success: false, message: "Already connected" });
+      }
+      return res.json({ success: false, message: "Request pending" });
     }
 
-    return res.json({success:false,message:'Connection request pending'});
+    const newConnection = await Connection.create({
+      from_user_id: userId,
+      to_user_id: id,
+      status: "pending",
+    });
+
+    await inngest.send({
+      name: "app/connection-request",
+      data: { connectionId: newConnection._id },
+    });
+
+    res.json({ success: true, message: "Request sent" });
 
   } catch (error) {
-    console.error('Error fetching user data:', error);
-    res.json({ success: false, message: 'Error fetching user data' });
+    console.error(error);
+    res.json({ success: false, message: "Error" });
   }
 };
+
+// get user connections
+// export const getConnections = async (req, res) => {
+//   try {
+//     const { userId } = req.auth();
+//     const user = await User.findById(userId).populate('connections followers following');
+
+//     const connections = user.connections;
+//     const followers = user.followers;
+//     const following = user.following;
+
+//     const pendingConnections = (await Connection.find({
+//       to_user_id: userId,
+//       status: 'pending'
+//     }).populate('from_user_id')).map(connection => connection.from_user_id);
+
+//     res.json({ success: true, connections, followers, following, pendingConnections });
+
+//   } catch (error) {
+//     console.error('Error fetching user data:', error);
+//     res.json({ success: false, message: 'Error fetching user data' });
+//   }
+// };
 
 // get user connections
 export const getConnections = async (req, res) => {
   try {
     const { userId } = req.auth();
-    const user = await User.findById(userId).populate('connections followers following');
+    const acceptedConnections = await Connection.find({
+      status: "accepted",
+      $or: [
+        { from_user_id: userId },
+        { to_user_id: userId },
+      ],
+    });
 
-    const connections = user.connections;
-    const followers = user.followers;
-    const following = user.following;
+    const connectionIds = acceptedConnections.map((conn) =>
+      conn.from_user_id === userId
+        ? conn.to_user_id
+        : conn.from_user_id
+    );
 
-    const pendingConnections = (await Connection.find({
+    const connections = await User.find({
+      _id: { $in: connectionIds },
+    });
+
+    const followers = await User.find({
+      followers: userId,
+    });
+
+    const following = await User.find({
+      following: userId,
+    });
+
+    const pendingConnections = await Connection.find({
       to_user_id: userId,
-      status: 'pending'
-    }).populate('from_user_id')).map(connection => connection.from_user_id);
+      status: "pending",
+    }).populate("from_user_id");
 
-    res.json({ success: true, connections, followers, following, pendingConnections });
+    res.json({
+      success: true,
+      connections,
+      followers,
+      following,
+      pendingConnections: pendingConnections.map(
+        (c) => c.from_user_id
+      ),
+    });
 
   } catch (error) {
-    console.error('Error fetching user data:', error);
-    res.json({ success: false, message: 'Error fetching user data' });
+    console.error(error);
+    res.json({ success: false, message: "Error fetching user data" });
   }
 };
+// accept connection request
+// export const acceptConnectionRequest = async (req, res) => {
+//   try {
+//     const { userId } = req.auth();
+//     const { id } = req.body;
+
+//     const connection = await Connection.findOne({
+//       from_user_id: id,
+//       to_user_id: userId
+//     });
+
+//     if (!connection) {
+//       return res.json({success:false,message:'connection request not found'});
+//     }
+
+//     const user = await User.findById(userId);
+//     user.connections.push(id);
+//     await user.save();
+
+//     const toUser = await User.findById(id);
+//     toUser.connections.push(userId);
+//     await toUser.save();
+
+//     connection.status = 'accepted';
+//     await connection.save();
+
+//     res.json({success:true,message:'Connectio accepted successfully'});
+
+//   } catch (error) {
+//     console.error('Error fetching user data:', error);
+//     res.json({ success: false, message: 'Error fetching user data' });
+//   }
+// };
 
 // accept connection request
 export const acceptConnectionRequest = async (req, res) => {
@@ -255,29 +349,43 @@ export const acceptConnectionRequest = async (req, res) => {
 
     const connection = await Connection.findOne({
       from_user_id: id,
-      to_user_id: userId
+      to_user_id: userId,
+      status: "pending",
     });
 
     if (!connection) {
-      return res.json({success:false,message:'connection request not found'});
+      return res.json({ success: false, message: "Request not found" });
     }
 
-    const user = await User.findById(userId);
-    user.connections.push(id);
-    await user.save();
-
-    const toUser = await User.findById(id);
-    toUser.connections.push(userId);
-    await toUser.save();
-
-    connection.status = 'accepted';
+    connection.status = "accepted";
     await connection.save();
+    const user = await User.findById(userId);
+    const otherUser = await User.findById(id);
 
-    res.json({success:true,message:'Connectio accepted successfully'});
+    if (!user.following.includes(id)) {
+      user.following.push(id);
+    }
+
+    if (!otherUser.following.includes(userId)) {
+      otherUser.following.push(userId);
+    }
+
+    if (!user.followers.includes(id)) {
+      user.followers.push(id);
+    }
+
+    if (!otherUser.followers.includes(userId)) {
+      otherUser.followers.push(userId);
+    }
+
+    await user.save();
+    await otherUser.save();
+
+    res.json({ success: true, message: "Connection accepted" });
 
   } catch (error) {
-    console.error('Error fetching user data:', error);
-    res.json({ success: false, message: 'Error fetching user data' });
+    console.error(error);
+    res.json({ success: false, message: "Error" });
   }
 };
 
