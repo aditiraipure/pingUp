@@ -12,14 +12,27 @@ export const sseController = (req, res) => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("Access-Control-Allow-Origin", "*");
 
-  connections[userId] = res;
-  res.write(`data: "connected"\n\n`); 
+  // FIX: ensure object structure exists
+  if (!connections[userId]) {
+    connections[userId] = { connections: [] };
+  }
+
+  // FIX: push instead of overwrite
+  connections[userId].connections.push(res);
+
+  res.write(`data: "connected"\n\n`);
 
   req.on("close", () => {
-    delete connections[userId];
+    if (connections[userId]) {
+      connections[userId].connections =
+        connections[userId].connections.filter((r) => r !== res);
+
+      if (connections[userId].connections.length === 0) {
+        delete connections[userId];
+      }
+    }
   });
 };
-
 // send message
 export const sendMessage = async (req, res) => {
   try {
