@@ -1,9 +1,12 @@
 
-import { Calendar, MapPin, PenBox, Verified } from "lucide-react";
+import { Calendar, MapPin, MessageCircle, PenBox, Verified } from "lucide-react";
 import moment from 'moment'
+import { useNavigate } from "react-router-dom";
 
 
 const UserProfileInfo = ({ user, profileId, setShowEdit ,posts }) => {
+  const navigate = useNavigate();
+
   return (
     <div className="relative py-4 px-6 md:px-8 bg-white">
       <div className="flex flex-col md:flex-row items-start gap-6">
@@ -30,8 +33,18 @@ const UserProfileInfo = ({ user, profileId, setShowEdit ,posts }) => {
                 {user.username ? `@${user.username}` : "Add username"}
               </p>
             </div>
-            {/*edit  */}
-            {!profileId && (
+            {/* Profile action */}
+            {profileId ? (
+              <button
+                type="button"
+                onClick={() => navigate(`/messages/${user._id}`)}
+                aria-label={`Message ${user.full_name}`}
+                className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition-colors mt-4 md:mt-0 cursor-pointer"
+              >
+                <MessageCircle className="w-4 h-4" />
+                Message
+              </button>
+            ) : (
               <button
                 onClick={() => setShowEdit(true)}
                 className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition-colors mt-4 md:mt-0 cursor-pointer"

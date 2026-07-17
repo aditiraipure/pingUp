@@ -17,11 +17,12 @@ import Profile from "./pages/Profile";
 import CreatePost from "./pages/CreatePost";
 import Layout from "./pages/Layout";
 import { fetchConnections } from "./features/connections/connectionSlice.js";
-import { addMessage } from "./features/messages/messagesSlice.js";
+import { addMessage, markMessagesSeen, setTyping } from "./features/messages/messagesSlice.js";
 import Notification from "./component/Notification";
+import Loading from "./component/Loading";
 
 const App = () => {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const { getToken } = useAuth();
   const { pathname } = useLocation();
   const pathnameRef = useRef(pathname);
@@ -39,17 +40,40 @@ const App = () => {
   }, [user, getToken, dispatch]);
 
   useEffect(() => {
+    if (!user) return;
+    const refreshProfileData = async () => {
+      const token = await getToken();
+      dispatch(fetchUser(token));
+      dispatch(fetchConnections(token));
+      window.dispatchEvent(new Event("recent-messages-updated"));
+    };
+    window.addEventListener("profile-updated", refreshProfileData);
+    return () => window.removeEventListener("profile-updated", refreshProfileData);
+  }, [user, getToken, dispatch]);
+
+  useEffect(() => {
     pathnameRef.current = pathname;
   }, [pathname]);
 
   useEffect(() => {
     if (user) {
       const eventSource = new EventSource(
-        import.meta.env.VITE_BASEURL + "/api/message/" + user.id,
+        import.meta.env.VITE_BASEURL + "/api/message/events/" + user.id,
       );
 
      eventSource.onmessage = (event) => {
-       const message = JSON.parse(event.data);
+       const realtimeEvent = JSON.parse(event.data);
+       if (realtimeEvent.type === "connected") return;
+       if (realtimeEvent.type === "typing") {
+         dispatch(setTyping({ userId: realtimeEvent.payload.from_user_id, isTyping: realtimeEvent.payload.is_typing }));
+         return;
+       }
+       if (realtimeEvent.type === "seen") {
+         dispatch(markMessagesSeen(realtimeEvent.payload.messageIds || []));
+         return;
+       }
+       const message = realtimeEvent.type === "message" ? realtimeEvent.payload : realtimeEvent;
+       window.dispatchEvent(new Event("recent-messages-updated"));
 
        if (
          message?.from_user_id?._id &&
@@ -68,6 +92,10 @@ const App = () => {
       };
     }
   }, [user, dispatch]);
+
+  if (!isLoaded) {
+    return <Loading />;
+  }
 
   return (
     <>

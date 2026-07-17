@@ -6,9 +6,12 @@ import StoryViewer from "./StoryViewer";
 import { useAuth } from "@clerk/clerk-react";
 import api from "../api/axios";
 import toast from "react-hot-toast";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const StoriesBar = () => {
   const { getToken } = useAuth(); 
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [stories, setStories] = useState([]);
   const [showModel, setShowModel] = useState(false);
@@ -35,6 +38,13 @@ const StoriesBar = () => {
   useEffect(() => {
     fetchStories();
   }, []);
+
+  useEffect(() => {
+    if (location.state?.openStoryComposer) {
+      setShowModel(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.pathname, location.state, navigate]);
 
   return (
     <div className="w-screen sm:w-[calc(100vw-240)] lg:max-w-2xl no-scrollbar overflow-x-auto px-4">

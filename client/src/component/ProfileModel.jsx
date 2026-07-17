@@ -40,7 +40,8 @@ export const ProfileModel = ({ setShowEdit }) => {
       cover_photo && userData.append("cover", cover_photo);
 
       const token = await getToken();
-      dispatch(updateUser({ userData, token }));
+      await dispatch(updateUser({ userData, token })).unwrap();
+      window.dispatchEvent(new Event("profile-updated"));
       setShowEdit(false);
     } catch (error) {
       toast.error(error.message);

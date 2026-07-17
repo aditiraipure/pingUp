@@ -399,9 +399,12 @@ export const getUserProfile = async (req, res) => {
       return res.json({success:false,message:'User not found'});
     }
 
-    const posts = await Post.find({ user: profileId }).populate('user');
+    const [posts, likedPosts] = await Promise.all([
+      Post.find({ user: profileId }).populate('user').sort({ createdAt: -1 }),
+      Post.find({ likes_count: profileId }).populate('user').sort({ createdAt: -1 }),
+    ]);
 
-    res.json({success:true,profile,posts});
+    res.json({success:true,profile,posts,likedPosts});
     console.log("Profile:", profile);
 
   } catch (error) {

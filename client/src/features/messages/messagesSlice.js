@@ -3,6 +3,7 @@ import api from "../../api/axios.js";
 
 const initialState = {
   messages: [],
+  typingByUser: {},
 };
 
 export const fetchMessages = createAsyncThunk(
@@ -27,8 +28,23 @@ const messagesSlice = createSlice({
       state.messages = action.payload;
     },
     addMessage: (state, action) => {
-      state.messages = [...state.messages, action.payload];
+      if (!state.messages.some((message) => message._id === action.payload._id)) state.messages.push(action.payload);
     },
+    replaceMessage: (state, action) => {
+      const index = state.messages.findIndex((message) => message._id === action.payload.tempId);
+      if (index !== -1) state.messages[index] = action.payload.message;
+      else state.messages.push(action.payload.message);
+    },
+    removeMessage: (state, action) => { state.messages = state.messages.filter((message) => message._id !== action.payload); },
+    markMessageFailed: (state, action) => {
+      const message = state.messages.find((item) => item._id === action.payload);
+      if (message) message.delivery_status = "failed";
+    },
+    markMessagesSeen: (state, action) => {
+      const ids = new Set(action.payload);
+      state.messages.forEach((message) => { if (ids.has(message._id)) { message.is_seen = true; message.delivery_status = "seen"; } });
+    },
+    setTyping: (state, action) => { state.typingByUser[action.payload.userId] = action.payload.isTyping; },
     resetMessages: (state) => {
       state.messages = [];
     },
@@ -42,7 +58,7 @@ const messagesSlice = createSlice({
   },
 });
 
-export const { setMessages, addMessage, resetMessages } =
+export const { setMessages, addMessage, replaceMessage, removeMessage, markMessageFailed, markMessagesSeen, setTyping, resetMessages } =
   messagesSlice.actions;
 
 export default messagesSlice.reducer;

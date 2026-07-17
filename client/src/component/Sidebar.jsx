@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import MenuItems from "./MenuItems";
 import { assets } from "../assets/assets";
 import { CirclePlus, LogOut } from "lucide-react";
-import { UserButton, useClerk } from "@clerk/clerk-react";
+import { useClerk } from "@clerk/clerk-react";
 import { useSelector } from "react-redux";
 
 const Sidebar = ({ sideBarOpen, setSidebarOpen }) => {
@@ -37,11 +37,11 @@ const Sidebar = ({ sideBarOpen, setSidebarOpen }) => {
       </div>
 
       <div className="w-full border-t border-gray-200 p-4 px-7 flex items-center justify-between">
-        <div className="flex gap-2 items-center cursor-pointer">
-          <UserButton />
+        <div onClick={() => navigate(`/profile/${user._id}`)} className="flex gap-2 items-center cursor-pointer min-w-0">
+          <div className="relative shrink-0"><img src={user.profile_picture || assets.sample_profile} alt={user.full_name || "Profile"} className="w-10 h-10 rounded-full object-cover ring-2 ring-purple-100" /><span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white" /></div>
 
           <div>
-            <h1 className="text-sm font-medium">{user.full_name}</h1>
+            <h1 className="text-sm font-medium truncate">{user.full_name}</h1>
             <p className="text-xs text-gray-500">@{user.username}</p>
           </div>
         </div>

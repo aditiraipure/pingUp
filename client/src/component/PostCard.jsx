@@ -1,21 +1,57 @@
-import { BadgeCheck, Heart, MessageCircle, Share2Icon } from "lucide-react";
+import { BadgeCheck, MessageCircle, Share2Icon } from "lucide-react";
 import moment from "moment";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { useAuth } from "@clerk/clerk-react";
 import toast from "react-hot-toast";
 import api from "../api/axios"; 
+import PostCommentsModal from "./PostCommentsModal";
+import SharePostModal from "./SharePostModal";
+import PostImageViewer from "./PostImageViewer";
+import LikeButton from "./LikeButton";
 
-const PostCard = ({ post }) => {
+const PostCard = ({ post, onLikeChange }) => {
   const postWithHashTags = post?.content?.replace(
     /(#\w+)/g,
     "<span class='text-indigo-600'>$1</span>",
   );
 
   const [likes, setLikes] = useState(post.likes_count);
+  const [commentCount, setCommentCount] = useState(post.comments_count || 0);
+  const [comments, setComments] = useState([]);
+  const [commentsLoading, setCommentsLoading] = useState(true);
+  const [commentsError, setCommentsError] = useState("");
+  const [showComments, setShowComments] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const [imageViewerIndex, setImageViewerIndex] = useState(null);
   const currentUser = useSelector((state) => state.user.value);
   const { getToken } = useAuth();
+
+  useEffect(() => {
+    let active = true;
+    const loadComments = async () => {
+      try {
+        setCommentsLoading(true);
+        const { data } = await api.get(`/api/post/${post._id}/comments`, {
+          headers: { Authorization: `Bearer ${await getToken()}` },
+        });
+        if (!data.success) throw new Error(data.message);
+        if (active) {
+          const loadedComments = data.comments || [];
+          setComments(loadedComments);
+          setCommentCount(loadedComments.length);
+          setCommentsError("");
+        }
+      } catch (error) {
+        if (active) setCommentsError(error.message || "Unable to load comments");
+      } finally {
+        if (active) setCommentsLoading(false);
+      }
+    };
+    loadComments();
+    return () => { active = false; };
+  }, [getToken, post._id]);
 
   const handleLike = async () => {
     try {
@@ -29,6 +65,7 @@ const PostCard = ({ post }) => {
 
       if (data.success) {
         toast.success(data.message);
+        const wasLiked = likes.includes(currentUser._id);
 
         setLikes((prev) => {
           if (prev.includes(currentUser._id)) {
@@ -37,6 +74,7 @@ const PostCard = ({ post }) => {
             return [...prev, currentUser._id];
           }
         });
+        onLikeChange?.(!wasLiked);
       } else {
         toast.error(data.message);
       }
@@ -81,46 +119,57 @@ const PostCard = ({ post }) => {
       {/* images */}
       <div className="grid grid-cols-2 gap-2">
         {post?.image_urls?.map((img, index) => (
-          <img
-            src={img}
-            key={index}
-            className={`w-full h-48 object-cover rounded-lg ${
+          <button type="button" key={index} onClick={() => setImageViewerIndex(index)} className={post.image_urls.length === 1 ? "col-span-2" : ""}>
+            <img
+              src={img}
+              className={`w-full h-48 object-cover rounded-lg cursor-zoom-in ${
               post.image_urls.length === 1 && "col-span-2 h-auto"
             }`}
-            alt=""
-          />
+              alt=""
+            />
+          </button>
         ))}
       </div>
 
       {/* Actions */}
       <div className="flex items-center gap-6 text-gray-600 text-sm pt-2 border-t border-gray-300">
         {/* Like */}
-        <div className="flex items-center gap-1 cursor-pointer">
-          <Heart
-            className={`w-4 h-4 ${
-              Array.isArray(likes) &&
-              currentUser?._id &&
-              likes.includes(currentUser._id)
-                ? "text-red-500 fill-red-500"
-                : ""
-            }`}
-            onClick={handleLike}
-          />
-          <span>{likes?.length || 0}</span>
-        </div>
+        <LikeButton
+          liked={Boolean(Array.isArray(likes) && currentUser?._id && likes.includes(currentUser._id))}
+          count={likes?.length || 0}
+          onClick={handleLike}
+          ariaLabel="Like post"
+        />
 
         {/* Comments */}
-        <div className="flex items-center gap-1 cursor-pointer">
+        <button type="button" onClick={() => setShowComments(true)} className="flex items-center gap-1 cursor-pointer">
           <MessageCircle className="w-4 h-4" />
-          <span>{12}</span>
-        </div>
+          <span>{commentCount}</span>
+        </button>
 
         {/* Share */}
-        <div className="flex items-center gap-1 cursor-pointer">
+        <button type="button" onClick={() => setShowShare(true)} className="flex items-center gap-1 cursor-pointer">
           <Share2Icon className="w-4 h-4" />
-          <span>{6}</span>
-        </div>
+        </button>
       </div>
+      {showComments && (
+        <PostCommentsModal
+          post={post}
+          comments={comments}
+          loading={commentsLoading}
+          error={commentsError}
+          onClose={() => setShowComments(false)}
+          onCommentAdded={(comment) => {
+            setComments((items) => [...items, comment]);
+            setCommentCount((count) => count + 1);
+          }}
+          onCommentLike={(commentId, likes) => {
+            setComments((items) => items.map((comment) => comment._id === commentId ? { ...comment, likes } : comment));
+          }}
+        />
+      )}
+      {showShare && <SharePostModal post={post} onClose={() => setShowShare(false)} />}
+      {imageViewerIndex !== null && <PostImageViewer images={post.image_urls} index={imageViewerIndex} onIndexChange={setImageViewerIndex} onClose={() => setImageViewerIndex(null)} />}
     </div>
   );
 };

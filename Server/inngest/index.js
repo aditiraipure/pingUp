@@ -5,6 +5,7 @@ import sendEmail  from "../configs/nodeMailer.js";
 import Story from "../models/story.js";
 import Message from "../models/message.js";
 import dotenv from "dotenv";
+import imagekit from "../configs/imageKit.js";
 
 dotenv.config();
 // Create a client to send and receive events
@@ -130,6 +131,10 @@ const deleteStory = inngest.createFunction(
         console.log("EVENT KEY:", process.env.INNGEST_EVENT_KEY);
 
         await step.run("delete-story", async()=>{
+            const story = await Story.findById(storyId);
+            if (story?.media_file_id) {
+                await imagekit.deleteFile(story.media_file_id);
+            }
             await Story.findByIdAndDelete(storyId);
             return {message:'Story deleted '};
         });

@@ -1,8 +1,22 @@
 import imagekit from "../configs/imageKit.js";
 import Message from "../models/message.js";
-import fs from "fs";
+import path from "path";
 
 const connections = {};
+const allowedAttachmentExtensions = new Set([
+  ".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".avif", ".bmp",
+  ".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v",
+  ".mp3", ".wav", ".aac", ".ogg", ".m4a", ".flac",
+  ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".csv", ".ppt", ".pptx", ".txt",
+  ".zip", ".rar", ".7z", ".json", ".xml",
+  ".js", ".ts", ".jsx", ".tsx", ".html", ".css", ".java", ".c", ".cpp", ".h", ".hpp", ".py", ".php", ".rb", ".go", ".rs", ".sql", ".md", ".yml", ".yaml"
+]);
+
+const broadcast = (userId, event) => {
+  const clients = connections[userId]?.connections || [];
+  clients.forEach((client) => client.write(`data: ${JSON.stringify(event)}\n\n`));
+  return clients.length > 0;
+};
 
 export const sseController = (req, res) => {
   const { userId } = req.params;
@@ -20,9 +34,11 @@ export const sseController = (req, res) => {
   // FIX: push instead of overwrite
   connections[userId].connections.push(res);
 
-  res.write(`data: "connected"\n\n`);
+  res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
+  const heartbeat = setInterval(() => res.write(`: heartbeat\n\n`), 25000);
 
   req.on("close", () => {
+    clearInterval(heartbeat);
     if (connections[userId]) {
       connections[userId].connections =
         connections[userId].connections.filter((r) => r !== res);
@@ -37,50 +53,75 @@ export const sseController = (req, res) => {
 export const sendMessage = async (req, res) => {
   try {
     const { userId } = req.auth();
-    const { to_user_id, message, message_type } = req.body;
-    const image = req.file;
+    const { to_user_id, message, shared_post_id, shared_story_id } = req.body;
+    const attachment = Array.isArray(req.files)
+      ? req.files[0]
+      : req.files?.file?.[0] || req.files?.image?.[0] || req.files?.attachment?.[0] || req.files?.media?.[0];
+
+    if (!to_user_id || (!message?.trim() && !attachment && !shared_post_id && !shared_story_id)) {
+      return res.status(400).json({ success: false, message: "Recipient and message content are required" });
+    }
+    if (attachment && attachment.size > 25 * 1024 * 1024) {
+      return res.status(413).json({ success: false, message: "Attachments must be 25 MB or smaller" });
+    }
+    if (attachment && !allowedAttachmentExtensions.has(path.extname(attachment.originalname).toLowerCase())) {
+      return res.status(415).json({ success: false, message: "This file type is not supported" });
+    }
 
     let media_url = "";
-    if ((message_type === "image" || image) && image) {
-      const fileBuffer = fs.readFileSync(image.path);
+    let message_type = "text";
+    let media_name = "";
+    let media_mime_type = "";
+    let media_size = 0;
+    if (attachment) {
+      const safeFileName = attachment.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
       const response = await imagekit.upload({
-        file: fileBuffer,
-        fileName: image.originalname,
+        file: attachment.buffer.toString("base64"),
+        fileName: safeFileName,
+        useUniqueFileName: true,
       });
-
-      media_url = imagekit.url({
-        path: response.filePath,
-        transformation: [
-          {
-            quality: "auto",
-            format: "webp",
-            width: "1280",
-          },
-        ],
-      });
+      if (!response?.url) {
+        return res.status(502).json({ success: false, message: "Attachment storage did not return a file URL" });
+      }
+      media_url = response.url;
+      media_name = attachment.originalname;
+      media_mime_type = attachment.mimetype;
+      media_size = attachment.size;
+      message_type = attachment.mimetype.startsWith("image/") ? "image" : attachment.mimetype.startsWith("video/") ? "video" : attachment.mimetype.startsWith("audio/") ? "audio" : "file";
     }
 
     const messageData = await Message.create({
       from_user_id: userId,
       to_user_id,
-      message,
+      message: message?.trim() || "",
       message_type,
       media_url,
+      media_name,
+      media_mime_type,
+      media_size,
+      shared_post: shared_post_id || null,
+      shared_story: shared_story_id || null,
     });
 
     const messageWithUserData = await Message.findById(
       messageData._id
-    ).populate("from_user_id");
+    ).populate("from_user_id")
+      .populate({ path: "shared_post", populate: { path: "user" } })
+      .populate({ path: "shared_story", populate: { path: "user" } });
 
-    res.json({ success: true, message: messageWithUserData });
-
-    if (connections[to_user_id]) {
-      connections[to_user_id].write(
-        `data: ${JSON.stringify(messageWithUserData)}\n\n`
-      );
+    if (broadcast(to_user_id, { type: "message", payload: messageWithUserData })) {
+      messageWithUserData.delivery_status = "delivered";
+      await Message.findByIdAndUpdate(messageData._id, { delivery_status: "delivered" });
     }
+    res.json({ success: true, message: messageWithUserData });
   } catch (error) {
-    res.json({ success: false, message: error.message });
+    console.error("Send message attachment error:", {
+      message: error.message,
+      name: error.name,
+      status: error.status,
+      details: error.response?.data,
+    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 // get chat messages
@@ -94,16 +135,20 @@ export const getChatMessages = async (req, res) => {
         { from_user_id: userId, to_user_id },
         { from_user_id: to_user_id, to_user_id: userId },
       ],
-    }).sort({ createdAt: 1 });
+    }).sort({ createdAt: 1 })
+      .populate({ path: "shared_post", populate: { path: "user" } })
+      .populate({ path: "shared_story", populate: { path: "user" } });
 
-    await Message.updateMany(
-      {
+    const unseenMessages = await Message.find({
         from_user_id: to_user_id,
         to_user_id: userId,
         is_seen: false, 
-      },
-      { is_seen: true }
-    );
+    }).select("_id");
+    const seenIds = unseenMessages.map((item) => item._id);
+    if (seenIds.length) {
+      await Message.updateMany({ _id: { $in: seenIds } }, { is_seen: true, delivery_status: "seen" });
+      broadcast(to_user_id, { type: "seen", payload: { messageIds: seenIds, seenBy: userId } });
+    }
 
     res.json({ success: true, messages });
   } catch (error) {
@@ -116,14 +161,41 @@ export const getUserRecentChats = async (req, res) => {
   try {
     const { userId } = req.auth();
 
-    const recentChats = await Message.find({
-      to_user_id: userId,
+    const messages = await Message.find({
+      $or: [
+        { from_user_id: userId },
+        { to_user_id: userId },
+      ],
     })
       .sort({ createdAt: -1 })
-      .populate("from_user_id to_user_id");
+      .populate("from_user_id to_user_id")
+      .lean();
 
+    const seenParticipants = new Set();
+    const recentChats = messages.filter((message) => {
+      const fromUserId = message.from_user_id?._id || message.from_user_id;
+      const toUserId = message.to_user_id?._id || message.to_user_id;
+      const participantId = String(fromUserId) === userId ? toUserId : fromUserId;
+      if (!participantId || seenParticipants.has(String(participantId))) return false;
+      seenParticipants.add(String(participantId));
+      return true;
+    });
+
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
     res.json({ success: true, messages: recentChats }); 
   } catch (error) {
     res.json({ success: false, message: error.message });
+  }
+};
+
+export const sendTypingStatus = async (req, res) => {
+  try {
+    const { userId } = req.auth();
+    const { to_user_id, is_typing } = req.body;
+    if (!to_user_id) return res.status(400).json({ success: false, message: "Recipient is required" });
+    broadcast(to_user_id, { type: "typing", payload: { from_user_id: userId, is_typing: Boolean(is_typing) } });
+    return res.json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
