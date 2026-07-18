@@ -2,6 +2,7 @@ import { Eye, MessageSquare } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { profileAvatar } from "../utils/profile";
 
 const Messages = () => {
   const { connections } = useSelector((state) => state.connections);
@@ -24,7 +25,7 @@ const Messages = () => {
               className="max-w-xl  flex flex-wrap gap-5 p-6 bg-white shadow rounded-md"
             >
               <img
-                src={user.profile_picture}
+                src={profileAvatar(user)}
                 alt=""
                 className="rounded-full size-12 mx-auto"
               />

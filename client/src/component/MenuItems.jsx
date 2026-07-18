@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { menuItemsData } from "../assets/assets";
+import { createElement } from "react";
 
 
 const MenuItems = ({ setSidebarOpen }) => {
@@ -17,7 +18,7 @@ const MenuItems = ({ setSidebarOpen }) => {
             }`
           }
         >
-          <Icon className="w-5 h-5" />
+          {createElement(Icon, { className: "w-5 h-5" })}
           {label}
         </NavLink>
       ))}

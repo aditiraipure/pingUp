@@ -4,6 +4,7 @@ import { useAuth } from "@clerk/clerk-react";
 import api from "../api/axios";
 import toast from "react-hot-toast";
 import SharePostModal from "./SharePostModal";
+import { profileAvatar } from "../utils/profile";
 
 const StoryViewer = ({viewStory, setViewStory}) => {
 
@@ -112,7 +113,7 @@ const StoryViewer = ({viewStory, setViewStory}) => {
       {/* user info */}
       <div className="absolute top-4 left-4 items-center space-x-3 p-2 px-4 sm:p-4 sm:px-8 backdrop-blur-2xl rounded bg-black/50">
         <img
-          src={viewStory.user?.profile_picture}
+          src={profileAvatar(viewStory.user)}
           alt=""
           className="size-7 sm:size-8 rounded-full object-cover border border-white"
         />

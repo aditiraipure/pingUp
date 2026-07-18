@@ -18,6 +18,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { useAuth } from "@clerk/clerk-react";
 import { fetchConnections } from "../features/connections/connectionSlice";
 import api from "../api/axios";
+import { profileAvatar } from "../utils/profile";
 import toast from "react-hot-toast";
 
 const Connection = () => {
@@ -139,7 +140,7 @@ const Connection = () => {
               className="w-full max-w-88 gap-5 flex p-6 bg-white shadow rounded-md"
             >
               <img
-                src={user.profile_picture}
+                src={profileAvatar(user)}
                 alt=""
                 className="rounded-full w-12 h-12 shadow-md mx-auto"
               />

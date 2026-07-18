@@ -5,6 +5,7 @@ import StoryModel from "./StoryModel";
 import StoryViewer from "./StoryViewer";
 import { useAuth } from "@clerk/clerk-react";
 import api from "../api/axios";
+import { profileAvatar } from "../utils/profile";
 import toast from "react-hot-toast";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -37,6 +38,8 @@ const StoriesBar = () => {
 
   useEffect(() => {
     fetchStories();
+    window.addEventListener("profile-updated", fetchStories);
+    return () => window.removeEventListener("profile-updated", fetchStories);
   }, []);
 
   useEffect(() => {
@@ -73,7 +76,7 @@ const StoriesBar = () => {
           >
             <img
               className="absolute size-8 top-3 left-3 z-10 rounded-full ring ring-gray-100 shadow"
-              src={story.profile_picture} 
+              src={profileAvatar(story)}
               alt=""
             />
             <p className="absolute top-18 left-3 text-white/60 text-sm truncate max-w-24">

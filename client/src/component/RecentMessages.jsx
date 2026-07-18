@@ -3,6 +3,7 @@ import { useAuth, useUser } from "@clerk/clerk-react";
 import api from "../api/axios";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
+import { profileAvatar } from "../utils/profile";
 
 const getMessageTimestamp = (message) => message.createdAt;
 
@@ -148,7 +149,7 @@ const RecentMessages = () => {
           className="flex items-center gap-2 py-2 hover:bg-slate-100 rounded-md px-2"
         >
           <img
-            src={message?.chat_user?.profile_picture}
+            src={profileAvatar(message?.chat_user)}
             alt="profile"
             className="w-8 h-8 rounded-full"
           />

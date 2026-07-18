@@ -4,20 +4,12 @@ import imagekit from "../configs/imageKit.js";
 import Post from "../models/Post.js";
 import { inngest } from "../inngest/index.js";
 import Connection from "../models/Connections.js";
+import { ensureUser } from "../services/ensureUser.js";
 
 export const getUser = async (req, res) => {
   try {
-    const authData = req.auth();
-    console.log("Auth Data:", authData); 
-
-    const { userId } = authData;
-    console.log("User ID:", userId);
-
-    const user = await User.findOne({ _id: userId });
-
-    if (!user) {
-      return res.json({ success: false, message: 'User not found' });
-    }
+    const { userId } = req.auth();
+    const user = req.dbUser || await ensureUser(userId);
 
    res.json({
   success: true,
@@ -29,7 +21,7 @@ export const getUser = async (req, res) => {
 
   } catch (error) {
     console.error('Error:', error);
-    res.json({ success: false, message: 'Error fetching user data' });
+    res.status(500).json({ success: false, message: 'Error fetching user data' });
   }
 };
 
@@ -392,16 +384,22 @@ export const acceptConnectionRequest = async (req, res) => {
 // get userprofiles
 export const getUserProfile = async (req, res) => {
   try {
+    const { userId } = req.auth();
     const { profileId } = req.body;
-    const profile = await User.findOne({ _id: profileId });
+    const resolvedProfileId = profileId || userId;
+    const profile = resolvedProfileId === userId
+      ? (req.dbUser || await ensureUser(userId))
+      : await User.findById(resolvedProfileId);
+    const viewer = (req.dbUser || await ensureUser(userId));
+    const visiblePostFilter = { is_archived: { $ne: true }, _id: { $nin: viewer?.hidden_posts || [] } };
 
     if (!profile) {
       return res.json({success:false,message:'User not found'});
     }
 
     const [posts, likedPosts] = await Promise.all([
-      Post.find({ user: profileId }).populate('user').sort({ createdAt: -1 }),
-      Post.find({ likes_count: profileId }).populate('user').sort({ createdAt: -1 }),
+      Post.find({ user: resolvedProfileId, ...visiblePostFilter }).populate('user').sort({ createdAt: -1 }),
+      Post.find({ likes_count: resolvedProfileId, ...visiblePostFilter }).populate('user').sort({ createdAt: -1 }),
     ]);
 
     res.json({success:true,profile,posts,likedPosts});

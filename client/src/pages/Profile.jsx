@@ -6,11 +6,11 @@ import PostCard from "../component/PostCard";
 import { Link } from "react-router-dom";
 import moment from "moment";
 import ProfileModel from "../component/ProfileModel";
-import {useAuth} from '@clerk/clerk-react'
+import {useAuth, useUser} from '@clerk/clerk-react'
 import api from '../api/axios'
 import toast from 'react-hot-toast'
 import { useSelector } from "react-redux";
-import { Camera, Heart } from "lucide-react";
+import { Archive, Camera, Heart } from "lucide-react";
 
 const EmptyProfileTab = ({ icon: Icon, title, description, actionLabel, onAction }) => (
   <div className="min-h-56 flex flex-col items-center justify-center px-6 py-10 text-center">
@@ -24,12 +24,15 @@ const EmptyProfileTab = ({ icon: Icon, title, description, actionLabel, onAction
 
 const Profile = () => {
   const currentUser = useSelector((state)=>state.user.value)
+  const { user: clerkUser } = useUser();
   const {getToken} =  useAuth();
   const { profileId } = useParams();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
   const [likedPosts, setLikedPosts] = useState([]);
+  const [archivedPosts, setArchivedPosts] = useState([]);
+  const [archiveLoaded, setArchiveLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState("posts");
   const [showEdit, setShowEdit] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -60,24 +63,65 @@ const Profile = () => {
   };
 
 useEffect(() => {
-  const targetProfileId = profileId || currentUser?._id;
+  const targetProfileId = profileId || currentUser?._id || clerkUser?.id;
   if (targetProfileId) fetchUser(targetProfileId);
-}, [profileId, currentUser?._id]);
+}, [profileId, currentUser?._id, clerkUser?.id]);
+
+useEffect(() => {
+  const remove = (event) => {
+    const id = event.detail.postId;
+    setPosts((items) => items.filter((post) => post._id !== id));
+    setLikedPosts((items) => items.filter((post) => post._id !== id));
+    setArchivedPosts((items) => items.filter((post) => post._id !== id));
+  };
+  const update = (event) => {
+    const nextPost = event.detail.post;
+    const replace = (items) => items.map((post) => post._id === nextPost._id ? nextPost : post);
+    setPosts(replace);
+    setLikedPosts(replace);
+    setArchivedPosts(replace);
+  };
+  const restore = (event) => {
+    const restoredPost = event.detail.post;
+    setPosts((items) => items.some((post) => post._id === restoredPost._id) ? items : [restoredPost, ...items]);
+    setArchivedPosts((items) => items.filter((post) => post._id !== restoredPost._id));
+  };
+  window.addEventListener("post-removed", remove);
+  window.addEventListener("post-updated", update);
+  window.addEventListener("post-restored", restore);
+  return () => {
+    window.removeEventListener("post-removed", remove);
+    window.removeEventListener("post-updated", update);
+    window.removeEventListener("post-restored", restore);
+  };
+}, []);
 
 useEffect(() => {
   const refreshProfile = () => {
-    const targetProfileId = profileId || currentUser?._id;
+    const targetProfileId = profileId || currentUser?._id || clerkUser?.id;
     if (targetProfileId) fetchUser(targetProfileId);
   };
   window.addEventListener("profile-updated", refreshProfile);
   return () => window.removeEventListener("profile-updated", refreshProfile);
-}, [profileId, currentUser?._id]);
+}, [profileId, currentUser?._id, clerkUser?.id]);
 
 
   if (loading) return <div className="p-6 max-w-3xl mx-auto space-y-4"><div className="h-56 rounded-2xl bg-purple-100 animate-pulse"/><div className="h-40 rounded-2xl bg-white animate-pulse"/></div>;
   if (error) return <div className="h-full flex items-center justify-center p-6"><div className="bg-white border border-purple-100 rounded-2xl shadow-sm p-8 text-center"><p className="font-semibold text-slate-800">Profile unavailable</p><p className="text-sm text-slate-500 mt-2">{error}</p><button onClick={() => fetchUser(profileId || currentUser?._id)} className="mt-5 px-5 py-2 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 text-white">Retry</button></div></div>;
-  const isOwnProfile = Boolean(currentUser?._id && user?._id === currentUser._id);
+  const activeUserId = currentUser?._id || clerkUser?.id;
+  const isOwnProfile = Boolean(activeUserId && user?._id === activeUserId);
   const mediaPosts = posts.filter((post) => post.image_urls?.length > 0);
+  const loadArchive = async () => {
+    if (archiveLoaded) return;
+    try {
+      const { data } = await api.get("/api/post/archive", { headers: { Authorization: `Bearer ${await getToken()}` } });
+      if (!data.success) throw new Error(data.message);
+      setArchivedPosts(data.posts || []);
+      setArchiveLoaded(true);
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message);
+    }
+  };
 
   return user ? (
     <div className="relative h-full overflow-y-scroll bg-gray-50 p-6">
@@ -107,9 +151,9 @@ useEffect(() => {
         {/*Tabs  */}
         <div className="mt-6 ">
           <div className="bg-white rounded-xl shadow p-1 flex max-w-md mx-auto items-center">
-            {["posts", "media", "likes"].map((tab) => (
+            {["posts", "media", "likes", ...(isOwnProfile ? ["archive"] : [])].map((tab) => (
               <button 
-                onClick={() => setActiveTab(tab)}
+                onClick={() => { setActiveTab(tab); if (tab === "archive") loadArchive(); }}
                 key={tab}
                 className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer ${
                   activeTab === tab
@@ -126,7 +170,7 @@ useEffect(() => {
           {activeTab === "posts" && (
             <div className="mt-6 flex flex-col items-center gap-4">
               {posts.length > 0 ? (
-                posts.map((post) => <PostCard key={post._id} post={post} />)
+                posts.map((post) => <PostCard key={post._id} post={post} onPostRemoved={(id) => setPosts((items) => items.filter((item) => item._id !== id))} onPostChange={(nextPost) => setPosts((items) => items.map((item) => item._id === nextPost._id ? nextPost : item))} />)
               ) : isOwnProfile ? (
                 <EmptyProfileTab title="Create your first post" description="Share your point of view." actionLabel="Create Post" onAction={() => navigate("/create-post")} />
               ) : (
@@ -183,6 +227,13 @@ useEffect(() => {
               ) : (
                 <EmptyProfileTab icon={Heart} title={isOwnProfile ? "No liked posts yet" : "No likes yet"} />
               )}
+            </div>
+          )}
+          {activeTab === "archive" && isOwnProfile && (
+            <div className="mt-6 flex flex-col items-center gap-4">
+              {archivedPosts.length > 0 ? archivedPosts.map((post) => (
+                <PostCard key={post._id} post={post} onPostRemoved={(id) => setArchivedPosts((items) => items.filter((item) => item._id !== id))} onPostChange={(nextPost) => setArchivedPosts((items) => items.map((item) => item._id === nextPost._id ? nextPost : item))} />
+              )) : <EmptyProfileTab icon={Archive} title="No archived posts" description="Posts you archive will appear here." />}
             </div>
           )}
         </div>

@@ -11,7 +11,7 @@ const initialState = {
 
 export const fetchUser = createAsyncThunk(
   "user/fetchUser",
-  async (token) => {
+  async (token, { rejectWithValue }) => {
     try {
       const { data } = await api.get("/api/user/data", {
         headers: {
@@ -20,10 +20,7 @@ export const fetchUser = createAsyncThunk(
       });
 
       if (!data.success) {
-        return {
-          connections: [],
-          following: [],
-        };
+        return rejectWithValue(data.message || "Unable to load user profile");
       }
 
       return {
@@ -33,35 +30,32 @@ export const fetchUser = createAsyncThunk(
       };
     } catch (error) {
       console.log(error);
-      return {
-        connections: [],
-        following: [],
-      };
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );
 
 export const updateUser = createAsyncThunk(
   "user/update",
-  async ({ userData, token }) => {
-    const { data } = await api.post("/api/user/update", userData, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  async ({ userData, token }, { rejectWithValue }) => {
+    try {
+      const { data } = await api.post("/api/user/update", userData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    if (data.success) {
+      if (!data.success) {
+        toast.error(data.message);
+        return rejectWithValue(data.message || "Unable to update profile");
+      }
       return {
         ...data.user,
         connections: data.user.connections || [],
         following: data.user.following || [],
       };
-    } else {
-      toast.error(data.message);
-      return {
-        connections: [],
-        following: [],
-      };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
     }
   }
 );

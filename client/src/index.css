@@ -4,6 +4,128 @@
 *{
    font-family: "Outfit", sans-serif;
 }
+
+html,
+body,
+#root {
+   min-height: 100%;
+}
+
+body {
+   transition: background-color 250ms ease, color 250ms ease;
+}
+
+html.dark body,
+html.dark #root {
+   background: #080d1a;
+   color: #e5e7eb;
+}
+
+html.dark .bg-white {
+   background-color: #111827 !important;
+}
+
+html.dark .bg-slate-50,
+html.dark .bg-gray-50 {
+   background-color: #080d1a !important;
+}
+
+html.dark .bg-slate-100,
+html.dark .bg-gray-100 {
+   background-color: #1f2937 !important;
+}
+
+html.dark .bg-indigo-50 {
+   background-color: rgba(79, 70, 229, .18) !important;
+}
+
+html.dark .bg-purple-50,
+html.dark .bg-purple-100 {
+   background-color: rgba(126, 34, 206, .16) !important;
+}
+
+html.dark [class*="from-slate-50"][class*="to-white"] {
+   background: linear-gradient(to bottom, #080d1a, #111827) !important;
+}
+
+html.dark .text-slate-900,
+html.dark .text-slate-800,
+html.dark .text-gray-900,
+html.dark .text-gray-800,
+html.dark .text-gray-700 {
+   color: #f3f4f6 !important;
+}
+
+html.dark .text-slate-700,
+html.dark .text-slate-600,
+html.dark .text-gray-600 {
+   color: #d1d5db !important;
+}
+
+html.dark .text-slate-500,
+html.dark .text-slate-400,
+html.dark .text-gray-500,
+html.dark .text-gray-400 {
+   color: #9ca3af !important;
+}
+
+html.dark .border-slate-100,
+html.dark .border-slate-200,
+html.dark .border-slate-300,
+html.dark .border-gray-200,
+html.dark .border-gray-300,
+html.dark .border-purple-100 {
+   border-color: #334155 !important;
+}
+
+html.dark input,
+html.dark textarea,
+html.dark select {
+   background-color: #0f172a;
+   border-color: #334155;
+   color: #f3f4f6;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+   color: #64748b;
+}
+
+html.dark .hover\:bg-slate-50:hover,
+html.dark .hover\:bg-gray-50:hover,
+html.dark .hover\:bg-slate-100:hover {
+   background-color: #1f2937 !important;
+}
+
+html.dark [class*="shadow"] {
+   --tw-shadow-color: rgba(0, 0, 0, .42);
+}
+
+html.dark [role="dialog"] > .bg-white {
+   background-color: #111827 !important;
+}
+
+html.dark * {
+   scrollbar-color: #475569 #111827;
+}
+
 .no-scrollbar::-webkit-scrollbar{
    display: none;
+}
+
+@keyframes pingup-loader-enter {
+   from { opacity: 0; transform: translateY(8px) scale(.97); }
+   to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes pingup-logo-breathe {
+   0%, 100% { opacity: .9; transform: scale(.98); }
+   50% { opacity: 1; transform: scale(1.03); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+   [class*="pingup-loader-enter"],
+   [class*="pingup-logo-breathe"] {
+      animation: none;
+   }
 }

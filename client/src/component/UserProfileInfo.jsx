@@ -2,6 +2,7 @@
 import { Calendar, MapPin, MessageCircle, PenBox, Verified } from "lucide-react";
 import moment from 'moment'
 import { useNavigate } from "react-router-dom";
+import { profileAvatar } from "../utils/profile";
 
 
 const UserProfileInfo = ({ user, profileId, setShowEdit ,posts }) => {
@@ -13,7 +14,7 @@ const UserProfileInfo = ({ user, profileId, setShowEdit ,posts }) => {
         {/* Profile Image */}
         <div className="w-32 h-32 border-4 border-white shadow-lg absolute -top-16 rounded-full">
           <img
-            src={user.profile_picture}
+            src={profileAvatar(user)}
             alt="Profile"
             className="absolute rounded-full z-2"
           />
@@ -81,7 +82,7 @@ const UserProfileInfo = ({ user, profileId, setShowEdit ,posts }) => {
             </div>
             <div>
               <span className="sm:text-xl font-bold text-gray-900">
-                {user.followers.length}
+                {user.followers?.length || 0}
               </span>
               <span className="text-xs sm:text-sm text-gray-500 ml-1.5">
                 Followers
@@ -89,7 +90,7 @@ const UserProfileInfo = ({ user, profileId, setShowEdit ,posts }) => {
             </div>
             <div>
               <span className="sm:text-xl font-bold text-gray-900">
-                {user.following.length}
+                {user.following?.length || 0}
               </span>
               <span className="text-xs sm:text-sm text-gray-500 ml-1.5">
                 Following

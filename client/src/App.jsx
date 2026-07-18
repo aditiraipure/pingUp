@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { useUser, useAuth } from "@clerk/clerk-react";
 import { Toaster } from "react-hot-toast";
@@ -20,6 +20,9 @@ import { fetchConnections } from "./features/connections/connectionSlice.js";
 import { addMessage, markMessagesSeen, setTyping } from "./features/messages/messagesSlice.js";
 import Notification from "./component/Notification";
 import Loading from "./component/Loading";
+import Appearance from "./pages/Appearance";
+import Settings from "./pages/Settings";
+import Archive from "./pages/Archive";
 
 const App = () => {
   const { user, isLoaded } = useUser();
@@ -27,17 +30,25 @@ const App = () => {
   const { pathname } = useLocation();
   const pathnameRef = useRef(pathname);
   const dispatch = useDispatch();
+  const [initialDataReady, setInitialDataReady] = useState(false);
 
   useEffect(() => {
+    let active = true;
     const fetchData = async () => {
+      if (!isLoaded) return;
       if (user) {
+        setInitialDataReady(false);
         const token = await getToken();
-        dispatch(fetchUser(token));
-        dispatch(fetchConnections(token));
+        await Promise.all([
+          dispatch(fetchUser(token)),
+          dispatch(fetchConnections(token)),
+        ]);
       }
+      if (active) setInitialDataReady(true);
     };
     fetchData();
-  }, [user, getToken, dispatch]);
+    return () => { active = false; };
+  }, [user, isLoaded, getToken, dispatch]);
 
   useEffect(() => {
     if (!user) return;
@@ -93,7 +104,7 @@ const App = () => {
     }
   }, [user, dispatch]);
 
-  if (!isLoaded) {
+  if (!isLoaded || (user && !initialDataReady)) {
     return <Loading />;
   }
 
@@ -120,6 +131,9 @@ const App = () => {
             <Route path="profile/:profileId" element={<Profile />} />
 
             <Route path="create-post" element={<CreatePost />} />
+            <Route path="appearance" element={<Appearance />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="archive" element={<Archive />} />
           </Route>
         )}
 

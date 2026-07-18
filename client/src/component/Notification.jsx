@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { profileAvatar } from "../utils/profile";
 
 const Notification = ({ t, message }) => {
   const navigate = useNavigate();
@@ -11,7 +12,7 @@ const Notification = ({ t, message }) => {
       <div className="flex-1 p-4">
         <div className="flex items-start">
           <img
-            src={message.from_user_id.profile_picture}
+            src={profileAvatar(message.from_user_id)}
             alt=""
             className="h-10 w-10 rounded-full flex-shrink-0 mt-0.5"
           />

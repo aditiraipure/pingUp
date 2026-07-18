@@ -14,6 +14,7 @@ import {
 } from "../features/messages/messagesSlice";
 import PostCard from "../component/PostCard";
 import StoryViewer from "../component/StoryViewer";
+import { profileAvatar } from "../utils/profile";
 
 const ChatBox = () => {
   const messages = useSelector((state) => state.messages.messages || []);
@@ -226,7 +227,7 @@ const ChatBox = () => {
           className="flex items-center gap-2 rounded-lg text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
         >
           <img
-            src={user?.profile_picture || "/default-avatar.png"}
+            src={profileAvatar(user)}
             alt={user?.full_name ? `${user.full_name}'s avatar` : "User avatar"}
             className="w-10 h-10 rounded-full object-cover"
           />

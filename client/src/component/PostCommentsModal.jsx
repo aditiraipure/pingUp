@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 import api from "../api/axios";
 import toast from "react-hot-toast";
 import LikeButton from "./LikeButton";
+import { profileAvatar } from "../utils/profile";
 
 const emojis = ["😀", "😂", "😍", "👍", "❤️", "🎉"];
 
@@ -14,6 +15,7 @@ const PostCommentsModal = ({ post, comments, loading, error, onClose, onCommentA
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
   const [likingComment, setLikingComment] = useState("");
+  const commentingDisabled = Boolean(post.commenting_disabled);
 
   const toggleCommentLike = async (comment) => {
     if (likingComment === comment._id) return;
@@ -73,7 +75,7 @@ const PostCommentsModal = ({ post, comments, loading, error, onClose, onCommentA
           {!loading && !error && comments.length === 0 && <p className="text-sm text-slate-400 text-center py-8">No comments yet.</p>}
           {comments.map((comment) => (
             <div key={comment._id} className="flex items-start gap-3">
-              <img src={comment.user?.profile_picture} alt="" className="w-8 h-8 rounded-full object-cover" />
+              <img src={profileAvatar(comment.user)} alt="" className="w-8 h-8 rounded-full object-cover" />
               <div className="bg-slate-50 rounded-xl px-3 py-2 min-w-0">
                 <p className="text-xs font-semibold text-slate-700">{comment.user?.full_name}</p>
                 <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{comment.content}</p>
@@ -93,9 +95,10 @@ const PostCommentsModal = ({ post, comments, loading, error, onClose, onCommentA
           ))}
         </div>
         <div className="border-t p-4">
+          {commentingDisabled ? <p className="py-3 text-center text-sm text-slate-500">Comments have been turned off by the post owner.</p> : <>
           <div className="flex gap-2 mb-2 pl-11">{emojis.map((emoji) => <button type="button" key={emoji} onClick={() => setContent((value) => value + emoji)} className="hover:scale-110 transition">{emoji}</button>)}</div>
           <div className="flex items-center gap-2">
-            <img src={currentUser?.profile_picture} alt="" className="w-9 h-9 rounded-full object-cover" />
+            <img src={profileAvatar(currentUser)} alt="" className="w-9 h-9 rounded-full object-cover" />
             <div className="flex-1 flex items-center gap-2 rounded-full border border-slate-200 px-3">
               <input value={content} onChange={(event) => setContent(event.target.value)} onKeyDown={(event) => event.key === "Enter" && submitComment()} placeholder="What do you think about this?" className="flex-1 py-2.5 text-sm outline-none min-w-0" />
               <button type="button" aria-label="Add photo" className="text-slate-400"><FileImage className="w-5 h-5" /></button>
@@ -103,6 +106,7 @@ const PostCommentsModal = ({ post, comments, loading, error, onClose, onCommentA
             </div>
             <button type="button" onClick={submitComment} disabled={sending || !content.trim()} className="w-9 h-9 rounded-full bg-indigo-500 text-white grid place-items-center disabled:opacity-50"><Send className="w-4 h-4" /></button>
           </div>
+          </>}
         </div>
       </div>
     </div>

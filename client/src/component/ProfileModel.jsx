@@ -4,6 +4,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { updateUser } from "../features/userSlice";
 import { useAuth } from "@clerk/clerk-react";
 import toast from "react-hot-toast";
+import { profileAvatar } from "../utils/profile";
 
 export const ProfileModel = ({ setShowEdit }) => {
   const dispatch = useDispatch();
@@ -40,8 +41,8 @@ export const ProfileModel = ({ setShowEdit }) => {
       cover_photo && userData.append("cover", cover_photo);
 
       const token = await getToken();
-      await dispatch(updateUser({ userData, token })).unwrap();
-      window.dispatchEvent(new Event("profile-updated"));
+      const updatedUser = await dispatch(updateUser({ userData, token })).unwrap();
+      window.dispatchEvent(new CustomEvent("profile-updated", { detail: { user: updatedUser } }));
       setShowEdit(false);
     } catch (error) {
       toast.error(error.message);
@@ -90,7 +91,7 @@ export const ProfileModel = ({ setShowEdit }) => {
                     src={
                       editForm.profile_picture
                         ? URL.createObjectURL(editForm.profile_picture)
-                        : user.profile_picture
+                        : profileAvatar(user)
                     }
                     alt=""
                     className="w-24 h-24 rounded-full object-cover mt-2"

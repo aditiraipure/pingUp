@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 import { useAuth } from "@clerk/clerk-react";
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
+import { profileAvatar } from "../utils/profile";
 
 const CreatePost = () => {
   const navigate = useNavigate();
@@ -90,7 +91,7 @@ const CreatePost = () => {
         <div className="max-w-xl bg-white p-4 sm:p-8 sm:pb-3 rounded-xl shadow-md space-y-4">
           <div className="flex items-center gap-3">
             <img
-              src={user?.profile_picture}
+              src={profileAvatar(user)}
               alt=""
               className="w-12 h-12 rounded-full shadow"
             />

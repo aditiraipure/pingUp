@@ -6,6 +6,7 @@ import { useAuth } from "@clerk/clerk-react";
 import api from "../api/axios";
 import toast from "react-hot-toast";
 import { fetchUser } from "../features/userSlice.js";
+import { profileAvatar } from "../utils/profile";
 
 const UserCard = ({ user }) => {
   const currentUser = useSelector((state) => state.user.value);
@@ -69,7 +70,7 @@ const UserCard = ({ user }) => {
     <div className="p-4 pt-6 flex flex-col justify-between w-72 shadow border border-gray-200 rounded-md">
       <div className="text-center">
         <img
-          src={user.profile_picture}
+          src={profileAvatar(user)}
           alt=""
           className="rounded-full w-16 shadow-md mx-auto"
         />
