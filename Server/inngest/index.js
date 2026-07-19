@@ -6,6 +6,7 @@ import Story from "../models/story.js";
 import Message from "../models/message.js";
 import dotenv from "dotenv";
 import imagekit from "../configs/imageKit.js";
+import FollowRequest from "../models/FollowRequest.js";
 
 dotenv.config();
 // Create a client to send and receive events
@@ -136,6 +137,41 @@ const sendReminderEmail = inngest.createFunction(
  }
 );
 
+const sendFollowRequestNotification = inngest.createFunction(
+  { id: "send-follow-request-notification" },
+  { event: "app/follow-request" },
+  async ({ event, step }) => {
+    const { followRequestId } = event.data;
+
+    return step.run("send-follow-request-notification", async () => {
+      const request = await FollowRequest.findById(followRequestId)
+        .populate("from_user_id to_user_id");
+
+      if (!request || request.status !== "pending" || !request.from_user_id || !request.to_user_id) {
+        return { message: "Follow request is no longer pending" };
+      }
+
+      const recipient = request.to_user_id;
+      const requester = request.from_user_id;
+      const body = `<div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h2>Hi ${recipient.full_name},</h2>
+        <p>${requester.full_name} (@${requester.username}) requested to follow you on PingUp.</p>
+        <p>Open <a href="${process.env.FRONTEND_URL}/follow-requests" style="color:#6366f1">Follow Requests</a> to accept or decline.</p>
+        <br/>
+        <p>Thanks,<br/>The PingUp Team - Stay Connected</p>
+      </div>`;
+
+      await sendEmail({
+        to: recipient.email,
+        subject: "New follow request on PingUp",
+        body,
+      });
+
+      return { message: "Follow request notification sent" };
+    });
+  },
+);
+
 // inngest functions to delete stories after 24 hours
 const deleteStory = inngest.createFunction(
     {id:'delete-story='},
@@ -203,6 +239,7 @@ export const functions = [
     syncUserUpdation,
     syncUserDeletion,
     sendReminderEmail,
+    sendFollowRequestNotification,
     deleteStory,
     getNotification
 ];

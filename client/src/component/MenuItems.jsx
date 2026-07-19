@@ -1,9 +1,17 @@
 import { NavLink } from "react-router-dom";
 import { menuItemsData } from "../assets/assets";
 import { createElement } from "react";
+import { useSelector } from "react-redux";
 
 
 const MenuItems = ({ setSidebarOpen }) => {
+  const notificationCounts = useSelector(
+    (state) => state.connections.notificationCounts,
+  );
+  const connectionBadge =
+    (notificationCounts?.pending || 0) + (notificationCounts?.connections || 0);
+  const messageBadge = useSelector((state) => state.messages.unreadCount || 0);
+
   return (
     <div className="px-6 text-gray-600 space-y-1 font-medium">
       {menuItemsData.map(({ to, label, Icon }) => (
@@ -19,7 +27,17 @@ const MenuItems = ({ setSidebarOpen }) => {
           }
         >
           {createElement(Icon, { className: "w-5 h-5" })}
-          {label}
+          <span className="flex-1">{label}</span>
+          {label === "Connections" && connectionBadge > 0 && (
+            <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-semibold flex items-center justify-center">
+              {connectionBadge > 99 ? "99+" : connectionBadge}
+            </span>
+          )}
+          {label === "Messages" && messageBadge > 0 && (
+            <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-semibold flex items-center justify-center">
+              {messageBadge > 99 ? "99+" : messageBadge}
+            </span>
+          )}
         </NavLink>
       ))}
     </div>

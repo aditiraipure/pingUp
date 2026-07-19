@@ -6,6 +6,7 @@ const initialState = {
   value: {
     connections: [],
     following: [],
+    pending_following: [],
   },
 };
 
@@ -27,6 +28,7 @@ export const fetchUser = createAsyncThunk(
         ...data.user,
         connections: data.user.connections || [],
         following: data.user.following || [],
+        pending_following: data.user.pending_following || [],
       };
     } catch (error) {
       console.log(error);
@@ -53,6 +55,7 @@ export const updateUser = createAsyncThunk(
         ...data.user,
         connections: data.user.connections || [],
         following: data.user.following || [],
+        pending_following: data.user.pending_following || [],
       };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message);

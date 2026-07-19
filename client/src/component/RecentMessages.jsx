@@ -4,6 +4,7 @@ import api from "../api/axios";
 import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
 import { profileAvatar } from "../utils/profile";
+import { useSelector } from "react-redux";
 
 const getMessageTimestamp = (message) => message.createdAt;
 
@@ -69,6 +70,7 @@ const RecentMessages = () => {
   const latestRequestRef = useRef(0);
   const { user } = useUser();
   const { getToken } = useAuth();
+  const unreadByUser = useSelector((state) => state.messages.unreadByUser);
 
   const fetchRecentMessages = useCallback(async () => {
     const requestId = ++latestRequestRef.current;
@@ -169,9 +171,9 @@ const RecentMessages = () => {
                 {getMessagePreview(message)}
               </p>
 
-              {message.to_user_id?._id === user.id && !message.is_seen && (
+              {(unreadByUser[message.chat_user._id] || 0) > 0 && (
                 <span className="bg-indigo-500 text-white w-4 h-4 flex items-center justify-center rounded-full text-[10px]">
-                  1
+                  {unreadByUser[message.chat_user._id] > 9 ? "9+" : unreadByUser[message.chat_user._id]}
                 </span>
               )}
             </div>

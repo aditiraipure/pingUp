@@ -37,6 +37,8 @@ const Profile = () => {
   const [showEdit, setShowEdit] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [followStatus, setFollowStatus] = useState("none");
+  const [followLoading, setFollowLoading] = useState(false);
 
   const fetchUser = async (profileId) => {
     setLoading(true);
@@ -50,6 +52,7 @@ const Profile = () => {
         setUser(data.profile)
         setPosts(data.posts)
         setLikedPosts(data.likedPosts || [])
+        setFollowStatus(data.followStatus || "none")
       }else{
         toast.error(data.message)
         setError(data.message || "Unable to load profile");
@@ -66,6 +69,23 @@ useEffect(() => {
   const targetProfileId = profileId || currentUser?._id || clerkUser?.id;
   if (targetProfileId) fetchUser(targetProfileId);
 }, [profileId, currentUser?._id, clerkUser?.id]);
+
+useEffect(() => {
+  const updateFollowStatus = (event) => {
+    if (event.detail?.userId === user?._id) {
+      setFollowStatus(event.detail.status === "accepted" ? "accepted" : "none");
+      if (event.detail.status === "accepted") {
+        const viewerId = currentUser?._id || clerkUser?.id;
+        setUser((current) => {
+          if (!current || !viewerId || current.followers?.includes(viewerId)) return current;
+          return { ...current, followers: [...(current.followers || []), viewerId] };
+        });
+      }
+    }
+  };
+  window.addEventListener("follow-status-updated", updateFollowStatus);
+  return () => window.removeEventListener("follow-status-updated", updateFollowStatus);
+}, [user?._id, currentUser?._id, clerkUser?.id]);
 
 useEffect(() => {
   const remove = (event) => {
@@ -111,6 +131,25 @@ useEffect(() => {
   const activeUserId = currentUser?._id || clerkUser?.id;
   const isOwnProfile = Boolean(activeUserId && user?._id === activeUserId);
   const mediaPosts = posts.filter((post) => post.image_urls?.length > 0);
+  const requestFollow = async () => {
+    if (isOwnProfile || followStatus !== "none" || followLoading) return;
+    setFollowLoading(true);
+    try {
+      const { data } = await api.post(
+        "/api/user/follow",
+        { id: user._id },
+        { headers: { Authorization: `Bearer ${await getToken()}` } },
+      );
+      if (!data.success) throw new Error(data.message);
+      setFollowStatus(data.status || "pending");
+      toast.success(data.message);
+      window.dispatchEvent(new Event("profile-updated"));
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message);
+    } finally {
+      setFollowLoading(false);
+    }
+  };
   const loadArchive = async () => {
     if (archiveLoaded) return;
     try {
@@ -145,6 +184,10 @@ useEffect(() => {
             posts={posts}
             profileId={profileId}
             setShowEdit={setShowEdit}
+            isOwnProfile={isOwnProfile}
+            followStatus={followStatus}
+            followLoading={followLoading}
+            onFollow={requestFollow}
           />
         </div>
 

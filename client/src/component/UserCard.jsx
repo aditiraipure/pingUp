@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Search, MapPin, UserPlus, MessageCircle, Plus } from "lucide-react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -13,31 +13,58 @@ const UserCard = ({ user }) => {
   const { getToken } = useAuth();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const derivedFollowStatus = currentUser?.following?.includes(user._id)
+    ? "accepted"
+    : currentUser?.pending_following?.includes(user._id)
+      ? "pending"
+      : "none";
+  const [followStatus, setFollowStatus] = useState(derivedFollowStatus);
+  const [followLoading, setFollowLoading] = useState(false);
 
   useEffect(() => {
     getToken().then((token) => {
       dispatch(fetchUser(token));
     });
-  }, []);
+  }, [dispatch, getToken]);
+
+  useEffect(() => {
+    setFollowStatus(derivedFollowStatus);
+  }, [derivedFollowStatus]);
+
+  useEffect(() => {
+    const updateFollowStatus = (event) => {
+      if (event.detail?.userId === user._id) {
+        setFollowStatus(event.detail.status === "accepted" ? "accepted" : "none");
+      }
+    };
+    window.addEventListener("follow-status-updated", updateFollowStatus);
+    return () => window.removeEventListener("follow-status-updated", updateFollowStatus);
+  }, [user._id]);
 
   const handleFollow = async () => {
+    if (followStatus !== "none" || followLoading) return;
+    setFollowLoading(true);
     try {
+      const token = await getToken();
       const { data } = await api.post(
         `/api/user/follow`,
         { id: user._id },
         {
-          headers: { Authorization: `Bearer ${await getToken()}` },
+          headers: { Authorization: `Bearer ${token}` },
         },
       );
 
       if (data.success) {
+        setFollowStatus(data.status || "pending");
         toast.success(data.message);
-        dispatch(fetchUser(await getToken()));
+        dispatch(fetchUser(token));
       } else {
         toast.error(data.message);
       }
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error.response?.data?.message || error.message);
+    } finally {
+      setFollowLoading(false);
     }
   };
 
@@ -98,11 +125,17 @@ const UserCard = ({ user }) => {
         {/* Follow */}
         <button
           onClick={handleFollow}
-          disabled={currentUser?.following.includes(user._id)}
-          className="w-full py-2 rounded-md flex justify-center items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 active:scale-95 transition text-white cursor-pointer"
+          disabled={followStatus !== "none" || followLoading}
+          className="w-full py-2 rounded-md flex justify-center items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 active:scale-95 transition text-white cursor-pointer disabled:cursor-default disabled:opacity-75"
         >
           <UserPlus className="w-4 h-4" />
-          {currentUser?.following.includes(user._id) ? "Following" : "Follow"}
+          {followLoading
+            ? "Sending..."
+            : followStatus === "accepted"
+              ? "Following"
+              : followStatus === "pending"
+                ? "Requested"
+                : "Follow"}
         </button>
 
         {/* Connection Request / Message */}

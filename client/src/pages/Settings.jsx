@@ -1,4 +1,4 @@
-import { Archive, Bell, ChevronRight, CircleHelp, Info, LockKeyhole, Moon, ShieldCheck, UserCog, WalletCards } from "lucide-react";
+import { Archive, Bell, ChevronRight, CircleHelp, Info, LockKeyhole, Moon, ShieldCheck, UserCog, UserRoundPlus, WalletCards } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { createElement } from "react";
 
@@ -7,6 +7,7 @@ const sections = [
   { label: "Account Settings", description: "Manage your account information and preferences.", icon: WalletCards },
   { label: "Privacy", description: "Control who can view and interact with your content.", icon: ShieldCheck },
   { label: "Notifications", description: "Choose which activity notifications you receive.", icon: Bell },
+  { label: "Follow Requests", description: "Review and respond to pending follow requests.", icon: UserRoundPlus, to: "/follow-requests" },
   { label: "Appearance", description: "Switch between Light and Dark mode.", icon: Moon, to: "/appearance" },
   { label: "Archive", description: "View, restore, or permanently delete archived posts.", icon: Archive, to: "/archive" },
   { label: "Security", description: "Review sign-in and account security options.", icon: LockKeyhole },

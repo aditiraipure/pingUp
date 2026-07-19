@@ -5,17 +5,24 @@ import Post from "../models/Post.js";
 import { inngest } from "../inngest/index.js";
 import Connection from "../models/Connections.js";
 import { ensureUser } from "../services/ensureUser.js";
+import FollowRequest from "../models/FollowRequest.js";
+import { sendRealtimeEvent } from "./messageController.js";
 
 export const getUser = async (req, res) => {
   try {
     const { userId } = req.auth();
     const user = req.dbUser || await ensureUser(userId);
+    const pendingFollowRequests = await FollowRequest.find({
+      from_user_id: userId,
+      status: "pending",
+    }).select("to_user_id");
 
    res.json({
   success: true,
   user: {
     ...user._doc,
-    imageUrl: user.profile_picture
+    imageUrl: user.profile_picture,
+    pending_following: pendingFollowRequests.map((request) => request.to_user_id),
   }
 });
 
@@ -104,16 +111,26 @@ export const updateUser = async (req, res) => {
 export const discoverUsers = async (req, res) => {
   try {
     const { userId } = req.auth();
-    const { input } = req.body;
+    const { input, scope } = req.body;
+    const escapedInput = String(input || "")
+      .trim()
+      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (!escapedInput) {
+      return res.json({ success: true, users: [] });
+    }
+    const searchPattern = new RegExp(escapedInput, "i");
+    const searchFields = scope === "messages"
+      ? [{ username: searchPattern }, { full_name: searchPattern }]
+      : [
+          { username: searchPattern },
+          { email: searchPattern },
+          { full_name: searchPattern },
+          { location: searchPattern },
+        ];
 
-    const allUsers = await User.find({
-      $or: [
-        {username: new RegExp(input, 'i')},
-        {email: new RegExp(input, 'i')},
-        {full_name: new RegExp(input, 'i')},
-        {location: new RegExp(input, 'i')},
-      ]
-    });
+    const query = User.find({ $or: searchFields });
+    if (scope === "messages") query.limit(20);
+    const allUsers = await query;
      
     const filteredUsers = allUsers.filter(user => user._id !== userId);
     res.json({ success: true, users: filteredUsers });
@@ -130,24 +147,82 @@ export const followUser = async (req, res) => {
     const { userId } = req.auth();
     const { id } = req.body;
 
-    const user = await User.findById(userId);
+    if (!id || id === userId) {
+      return res.status(400).json({ success: false, message: "Invalid user" });
+    }
+
+    const [user, toUser] = await Promise.all([
+      User.findById(userId),
+      ensureUser(id),
+    ]);
+
+    if (!user || !toUser) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
 
     if (user.following.includes(id)) {
-      return res.json({success:false,message:'Already following this user'});
+      return res.json({
+        success: true,
+        status: "accepted",
+        message: "Already following this user",
+      });
     }
-    
-    user.following.push(id);
-    await user.save();
 
-    const toUser = await User.findById(id);
-    toUser.followers.push(userId);
-    await toUser.save();
+    const existingRequest = await FollowRequest.findOne({
+      from_user_id: userId,
+      to_user_id: id,
+    });
 
-    res.json({success:true,message:'User followed successfully'});
+    if (existingRequest?.status === "pending") {
+      return res.json({
+        success: true,
+        status: "pending",
+        message: "Follow request already pending",
+      });
+    }
+
+    const request = await FollowRequest.findOneAndUpdate(
+      { from_user_id: userId, to_user_id: id },
+      {
+        $set: {
+          status: "pending",
+          recipient_read_at: null,
+          sender_read_at: null,
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
+
+    inngest.send({
+      name: "app/follow-request",
+      data: { followRequestId: request._id.toString() },
+    }).catch((error) => {
+      console.error("Follow request notification failed:", {
+        followRequestId: request._id,
+        message: error.message,
+      });
+    });
+
+    sendRealtimeEvent(id, "follow_request", {
+      requestId: request._id,
+      fromUser: {
+        _id: user._id,
+        full_name: user.full_name,
+        username: user.username,
+        profile_picture: user.profile_picture,
+      },
+      requestedAt: request.createdAt,
+    });
+
+    res.json({
+      success: true,
+      status: "pending",
+      message: "Follow request sent",
+    });
 
   } catch (error) {
-    console.error('Error fetching user data:', error);
-    res.json({ success: false, message: 'Error fetching user data' });
+    console.error("Error creating follow request:", error);
+    res.status(500).json({ success: false, message: "Unable to send follow request" });
   }
 };
 
@@ -157,19 +232,123 @@ export const unfollowUser = async (req, res) => {
     const { userId } = req.auth();
     const { id } = req.body;
 
-    const user = await User.findById(userId);
-    user.following = user.following.filter(user => user !== id);
-    await user.save();
+    if (!id || id === userId) {
+      return res.status(400).json({ success: false, message: "Invalid user" });
+    }
 
-    const toUser = await User.findById(id);
-    toUser.followers = toUser.followers.filter(user => user !== userId);
-    await toUser.save();
+    const acceptedFollowRequest = await FollowRequest.findOne({
+      from_user_id: userId,
+      to_user_id: id,
+      status: "accepted",
+    });
 
-    res.json({success:true,message:'User unfollowed successfully'});
+    const updates = [
+      User.findByIdAndUpdate(userId, { $pull: { following: id } }),
+      User.findByIdAndUpdate(id, { $pull: { followers: userId } }),
+      FollowRequest.findOneAndUpdate(
+        { from_user_id: userId, to_user_id: id, status: "accepted" },
+        {
+          $set: {
+            status: "declined",
+            recipient_read_at: new Date(),
+            sender_read_at: new Date(),
+          },
+        },
+      ),
+    ];
+
+    if (acceptedFollowRequest) {
+      updates.push(
+        User.findByIdAndUpdate(userId, { $pull: { connections: id } }),
+        User.findByIdAndUpdate(id, { $pull: { connections: userId } }),
+        Connection.deleteMany({
+          status: "accepted",
+          $or: [
+            { from_user_id: userId, to_user_id: id },
+            { from_user_id: id, to_user_id: userId },
+          ],
+        }),
+      );
+    }
+
+    await Promise.all(updates);
+
+    sendRealtimeEvent(id, "follow_relationship_removed", {
+      userId,
+      connectionRemoved: Boolean(acceptedFollowRequest),
+    });
+
+    res.json({
+      success: true,
+      connectionRemoved: Boolean(acceptedFollowRequest),
+      message: "User unfollowed successfully",
+    });
 
   } catch (error) {
-    console.error('Error fetching user data:', error);
-    res.json({ success: false, message: 'Error fetching user data' });
+    console.error("Error unfollowing user:", error);
+    res.status(500).json({ success: false, message: "Unable to unfollow user" });
+  }
+};
+
+export const removeFollower = async (req, res) => {
+  try {
+    const { userId } = req.auth();
+    const { id } = req.body;
+
+    if (!id || id === userId) {
+      return res.status(400).json({ success: false, message: "Invalid user" });
+    }
+
+    const acceptedFollowRequest = await FollowRequest.findOne({
+      from_user_id: id,
+      to_user_id: userId,
+      status: "accepted",
+    });
+
+    const updates = [
+      User.findByIdAndUpdate(userId, { $pull: { followers: id } }),
+      User.findByIdAndUpdate(id, { $pull: { following: userId } }),
+      FollowRequest.findOneAndUpdate(
+        { from_user_id: id, to_user_id: userId, status: "accepted" },
+        {
+          $set: {
+            status: "declined",
+            recipient_read_at: new Date(),
+            sender_read_at: new Date(),
+          },
+        },
+      ),
+    ];
+
+    if (acceptedFollowRequest) {
+      updates.push(
+        User.findByIdAndUpdate(userId, { $pull: { connections: id } }),
+        User.findByIdAndUpdate(id, { $pull: { connections: userId } }),
+        Connection.deleteMany({
+          status: "accepted",
+          $or: [
+            { from_user_id: userId, to_user_id: id },
+            { from_user_id: id, to_user_id: userId },
+          ],
+        }),
+      );
+    }
+
+    await Promise.all(updates);
+
+    sendRealtimeEvent(id, "follow_relationship_removed", {
+      userId,
+      connectionRemoved: Boolean(acceptedFollowRequest),
+    });
+
+    res.json({
+      success: true,
+      connectionRemoved: Boolean(acceptedFollowRequest),
+      message: "Follower removed successfully.",
+    });
+  } catch (error) {
+    console.error("Error removing follower:", error);
+    res.status(500).json({ success: false, message: "Unable to remove follower" });
   }
 };
 
@@ -253,6 +432,7 @@ export const sendConnectionRequest = async (req, res) => {
 export const getConnections = async (req, res) => {
   try {
     const { userId } = req.auth();
+    const currentUser = await User.findById(userId).populate("followers following connections");
     const acceptedConnections = await Connection.find({
       status: "accepted",
       $or: [
@@ -267,22 +447,42 @@ export const getConnections = async (req, res) => {
         : conn.from_user_id
     );
 
-    const connections = await User.find({
+    const acceptedConnectionUsers = await User.find({
       _id: { $in: connectionIds },
     });
-
-    const followers = await User.find({
-      followers: userId,
+    const connectionsById = new Map();
+    [...(currentUser?.connections || []), ...acceptedConnectionUsers].forEach((user) => {
+      if (user?._id) connectionsById.set(user._id.toString(), user);
     });
+    const connections = [...connectionsById.values()];
 
-    const following = await User.find({
-      following: userId,
-    });
+    const followers = currentUser?.followers || [];
+    const following = currentUser?.following || [];
 
     const pendingConnections = await Connection.find({
       to_user_id: userId,
       status: "pending",
     }).populate("from_user_id");
+
+    const pendingFollowRequests = await FollowRequest.find({
+      to_user_id: userId,
+      status: "pending",
+    })
+      .populate("from_user_id")
+      .sort({ createdAt: -1 });
+
+    const [pendingUnread, connectionUnread] = await Promise.all([
+      FollowRequest.countDocuments({
+        to_user_id: userId,
+        status: "pending",
+        recipient_read_at: null,
+      }),
+      FollowRequest.countDocuments({
+        from_user_id: userId,
+        status: "accepted",
+        sender_read_at: null,
+      }),
+    ]);
 
     res.json({
       success: true,
@@ -292,11 +492,203 @@ export const getConnections = async (req, res) => {
       pendingConnections: pendingConnections.map(
         (c) => c.from_user_id
       ),
+      pendingFollowRequests: pendingFollowRequests
+        .filter((request) => request.from_user_id)
+        .map((request) => ({
+          _id: request._id,
+          requester: request.from_user_id,
+          status: request.status,
+          requestedAt: request.createdAt,
+        })),
+      notificationCounts: {
+        pending: pendingUnread,
+        connections: connectionUnread,
+      },
     });
 
   } catch (error) {
     console.error(error);
     res.json({ success: false, message: "Error fetching user data" });
+  }
+};
+
+export const getFollowRequests = async (req, res) => {
+  try {
+    const { userId } = req.auth();
+    const requests = await FollowRequest.find({
+      to_user_id: userId,
+      status: "pending",
+    })
+      .populate("from_user_id")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      requests: requests
+        .filter((request) => request.from_user_id)
+        .map((request) => ({
+          _id: request._id,
+          requester: request.from_user_id,
+          status: request.status,
+          requestedAt: request.createdAt,
+        })),
+    });
+  } catch (error) {
+    console.error("Error fetching follow requests:", error);
+    res.status(500).json({ success: false, message: "Unable to load follow requests" });
+  }
+};
+
+export const getFollowNotificationCounts = async (req, res) => {
+  try {
+    const { userId } = req.auth();
+    const [pending, connections] = await Promise.all([
+      FollowRequest.countDocuments({
+        to_user_id: userId,
+        status: "pending",
+        recipient_read_at: null,
+      }),
+      FollowRequest.countDocuments({
+        from_user_id: userId,
+        status: "accepted",
+        sender_read_at: null,
+      }),
+    ]);
+
+    res.json({ success: true, counts: { pending, connections } });
+  } catch (error) {
+    console.error("Error fetching follow notification counts:", error);
+    res.status(500).json({ success: false, message: "Unable to load notifications" });
+  }
+};
+
+export const markFollowNotificationsRead = async (req, res) => {
+  try {
+    const { userId } = req.auth();
+    const { section } = req.body;
+    const now = new Date();
+
+    if (section === "pending") {
+      await FollowRequest.updateMany(
+        { to_user_id: userId, status: "pending", recipient_read_at: null },
+        { $set: { recipient_read_at: now } },
+      );
+    } else if (section === "connections") {
+      await FollowRequest.updateMany(
+        { from_user_id: userId, status: "accepted", sender_read_at: null },
+        { $set: { sender_read_at: now } },
+      );
+    } else {
+      return res.status(400).json({ success: false, message: "Invalid notification section" });
+    }
+
+    res.json({ success: true, message: "Notifications marked as read" });
+  } catch (error) {
+    console.error("Error marking follow notifications read:", error);
+    res.status(500).json({ success: false, message: "Unable to update notifications" });
+  }
+};
+
+export const acceptFollowRequest = async (req, res) => {
+  try {
+    const { userId } = req.auth();
+    const { requestId } = req.body;
+
+    const request = await FollowRequest.findOne({
+      _id: requestId,
+      to_user_id: userId,
+      status: "pending",
+    });
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Follow request not found" });
+    }
+
+    let connection = await Connection.findOne({
+      $or: [
+        { from_user_id: request.from_user_id, to_user_id: userId },
+        { from_user_id: userId, to_user_id: request.from_user_id },
+      ],
+    });
+
+    if (connection) {
+      connection.status = "accepted";
+      await connection.save();
+    } else {
+      connection = await Connection.create({
+        from_user_id: request.from_user_id,
+        to_user_id: userId,
+        status: "accepted",
+      });
+    }
+
+    await Promise.all([
+      User.findByIdAndUpdate(request.from_user_id, {
+        $addToSet: { following: userId, connections: userId },
+      }),
+      User.findByIdAndUpdate(userId, {
+        $addToSet: {
+          followers: request.from_user_id,
+          connections: request.from_user_id,
+        },
+      }),
+    ]);
+
+    request.status = "accepted";
+    request.recipient_read_at = new Date();
+    request.sender_read_at = null;
+    await request.save();
+
+    sendRealtimeEvent(request.from_user_id, "follow_request_updated", {
+      userId,
+      status: "accepted",
+    });
+
+    res.json({
+      success: true,
+      status: "accepted",
+      message: "Follow request accepted",
+    });
+  } catch (error) {
+    console.error("Error accepting follow request:", error);
+    res.status(500).json({ success: false, message: "Unable to accept follow request" });
+  }
+};
+
+export const declineFollowRequest = async (req, res) => {
+  try {
+    const { userId } = req.auth();
+    const { requestId } = req.body;
+
+    const request = await FollowRequest.findOneAndUpdate(
+      { _id: requestId, to_user_id: userId, status: "pending" },
+      {
+        $set: {
+          status: "declined",
+          recipient_read_at: new Date(),
+          sender_read_at: new Date(),
+        },
+      },
+      { new: true },
+    );
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Follow request not found" });
+    }
+
+    sendRealtimeEvent(request.from_user_id, "follow_request_updated", {
+      userId,
+      status: "declined",
+    });
+
+    res.json({
+      success: true,
+      status: "declined",
+      message: "Follow request declined",
+    });
+  } catch (error) {
+    console.error("Error declining follow request:", error);
+    res.status(500).json({ success: false, message: "Unable to decline follow request" });
   }
 };
 // accept connection request
@@ -397,12 +789,24 @@ export const getUserProfile = async (req, res) => {
       return res.json({success:false,message:'User not found'});
     }
 
-    const [posts, likedPosts] = await Promise.all([
+    const [posts, likedPosts, followRequest] = await Promise.all([
       Post.find({ user: resolvedProfileId, ...visiblePostFilter }).populate('user').sort({ createdAt: -1 }),
       Post.find({ likes_count: resolvedProfileId, ...visiblePostFilter }).populate('user').sort({ createdAt: -1 }),
+      resolvedProfileId === userId
+        ? null
+        : FollowRequest.findOne({
+            from_user_id: userId,
+            to_user_id: resolvedProfileId,
+          }).select("status"),
     ]);
 
-    res.json({success:true,profile,posts,likedPosts});
+    const followStatus = viewer.following.includes(resolvedProfileId)
+      ? "accepted"
+      : followRequest?.status === "pending"
+        ? "pending"
+        : "none";
+
+    res.json({success:true,profile,posts,likedPosts,followStatus});
     console.log("Profile:", profile);
 
   } catch (error) {

@@ -1,11 +1,11 @@
 
-import { Calendar, MapPin, MessageCircle, PenBox, Verified } from "lucide-react";
+import { Calendar, Clock3, MapPin, MessageCircle, PenBox, UserCheck, UserPlus, Verified } from "lucide-react";
 import moment from 'moment'
 import { useNavigate } from "react-router-dom";
 import { profileAvatar } from "../utils/profile";
 
 
-const UserProfileInfo = ({ user, profileId, setShowEdit ,posts }) => {
+const UserProfileInfo = ({ user, setShowEdit, posts, isOwnProfile, followStatus, followLoading, onFollow }) => {
   const navigate = useNavigate();
 
   return (
@@ -35,16 +35,27 @@ const UserProfileInfo = ({ user, profileId, setShowEdit ,posts }) => {
               </p>
             </div>
             {/* Profile action */}
-            {profileId ? (
-              <button
-                type="button"
-                onClick={() => navigate(`/messages/${user._id}`)}
-                aria-label={`Message ${user.full_name}`}
-                className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition-colors mt-4 md:mt-0 cursor-pointer"
-              >
-                <MessageCircle className="w-4 h-4" />
-                Message
-              </button>
+            {!isOwnProfile ? (
+              <div className="flex items-center gap-2 mt-4 md:mt-0">
+                <button
+                  type="button"
+                  onClick={onFollow}
+                  disabled={followStatus !== "none" || followLoading}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-white bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 transition active:scale-95 disabled:cursor-default disabled:opacity-75"
+                >
+                  {followStatus === "accepted" ? <UserCheck className="w-4 h-4" /> : followStatus === "pending" ? <Clock3 className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                  {followLoading ? "Sending..." : followStatus === "accepted" ? "Following" : followStatus === "pending" ? "Requested" : "Follow"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/messages/${user._id}`)}
+                  aria-label={`Message ${user.full_name}`}
+                  className="flex items-center gap-2 border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition-colors cursor-pointer"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Message
+                </button>
+              </div>
             ) : (
               <button
                 onClick={() => setShowEdit(true)}

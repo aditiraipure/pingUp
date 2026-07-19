@@ -123,7 +123,8 @@ const ChatBox = () => {
   const fetchUserMessages = async () => {
     try {
       const token = await getToken();
-      dispatch(fetchMessages({ token, userId }));
+      await dispatch(fetchMessages({ token, userId }));
+      window.dispatchEvent(new Event("recent-messages-updated"));
     } catch (error) {
       toast.error(error.message);
     }
@@ -194,11 +195,29 @@ const ChatBox = () => {
   }, [userId]);
 
   useEffect(() => {
-    if (connections.length > 0) {
-      const foundUser = connections.find((c) => c._id === userId);
+    let active = true;
+    const foundUser = connections.find((connection) => connection._id === userId);
+    if (foundUser) {
       setUser(foundUser);
+      return () => { active = false; };
     }
-  }, [connections, userId]);
+
+    const loadChatUser = async () => {
+      try {
+        const token = await getToken();
+        const { data } = await api.post(
+          "/api/user/profile",
+          { profileId: userId },
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
+        if (active && data.success) setUser(data.profile);
+      } catch {
+        if (active) setUser(null);
+      }
+    };
+    loadChatUser();
+    return () => { active = false; };
+  }, [connections, getToken, userId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

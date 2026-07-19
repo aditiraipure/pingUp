@@ -38,7 +38,11 @@ const Feed = () => {
   useEffect(() => {
     fetchFeeds();
     window.addEventListener("profile-updated", fetchFeeds);
-    return () => window.removeEventListener("profile-updated", fetchFeeds);
+    window.addEventListener("feed-refresh", fetchFeeds);
+    return () => {
+      window.removeEventListener("profile-updated", fetchFeeds);
+      window.removeEventListener("feed-refresh", fetchFeeds);
+    };
   }, []);
 
   useEffect(() => {

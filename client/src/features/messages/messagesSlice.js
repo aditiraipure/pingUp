@@ -4,6 +4,8 @@ import api from "../../api/axios.js";
 const initialState = {
   messages: [],
   typingByUser: {},
+  unreadCount: 0,
+  unreadByUser: {},
 };
 
 export const fetchMessages = createAsyncThunk(
@@ -18,6 +20,21 @@ export const fetchMessages = createAsyncThunk(
     );
     return data.success ? data : null;
   }
+);
+
+export const fetchUnreadMessageCounts = createAsyncThunk(
+  "messages/fetchUnreadCounts",
+  async (token, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get("/api/message/unread", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!data.success) return rejectWithValue(data.message);
+      return data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  },
 );
 
 const messagesSlice = createSlice({
@@ -45,6 +62,17 @@ const messagesSlice = createSlice({
       state.messages.forEach((message) => { if (ids.has(message._id)) { message.is_seen = true; message.delivery_status = "seen"; } });
     },
     setTyping: (state, action) => { state.typingByUser[action.payload.userId] = action.payload.isTyping; },
+    incrementUnread: (state, action) => {
+      const userId = action.payload;
+      state.unreadByUser[userId] = (state.unreadByUser[userId] || 0) + 1;
+      state.unreadCount += 1;
+    },
+    markChatRead: (state, action) => {
+      const userId = action.payload;
+      const count = state.unreadByUser[userId] || 0;
+      state.unreadCount = Math.max(0, state.unreadCount - count);
+      delete state.unreadByUser[userId];
+    },
     resetMessages: (state) => {
       state.messages = [];
     },
@@ -53,12 +81,20 @@ const messagesSlice = createSlice({
     builder.addCase(fetchMessages.fulfilled, (state, action) => {
       if (action.payload) {
         state.messages = action.payload.messages || []; 
+        const userId = action.meta.arg.userId;
+        const count = state.unreadByUser[userId] || 0;
+        state.unreadCount = Math.max(0, state.unreadCount - count);
+        delete state.unreadByUser[userId];
       }
-    });
+    })
+      .addCase(fetchUnreadMessageCounts.fulfilled, (state, action) => {
+        state.unreadCount = action.payload.total || 0;
+        state.unreadByUser = action.payload.byUser || {};
+      });
   },
 });
 
-export const { setMessages, addMessage, replaceMessage, removeMessage, markMessageFailed, markMessagesSeen, setTyping, resetMessages } =
+export const { setMessages, addMessage, replaceMessage, removeMessage, markMessageFailed, markMessagesSeen, setTyping, incrementUnread, markChatRead, resetMessages } =
   messagesSlice.actions;
 
 export default messagesSlice.reducer;

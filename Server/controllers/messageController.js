@@ -18,6 +18,9 @@ const broadcast = (userId, event) => {
   return clients.length > 0;
 };
 
+export const sendRealtimeEvent = (userId, type, payload) =>
+  broadcast(userId, { type, payload });
+
 export const sseController = (req, res) => {
   const { userId } = req.params;
 
@@ -148,11 +151,71 @@ export const getChatMessages = async (req, res) => {
     if (seenIds.length) {
       await Message.updateMany({ _id: { $in: seenIds } }, { is_seen: true, delivery_status: "seen" });
       broadcast(to_user_id, { type: "seen", payload: { messageIds: seenIds, seenBy: userId } });
+      const seenIdSet = new Set(seenIds.map((id) => id.toString()));
+      messages.forEach((message) => {
+        if (seenIdSet.has(message._id.toString())) {
+          message.is_seen = true;
+          message.delivery_status = "seen";
+        }
+      });
     }
 
     res.json({ success: true, messages });
   } catch (error) {
     res.json({ success: false, message: error.message });
+  }
+};
+
+export const getUnreadMessageCounts = async (req, res) => {
+  try {
+    const { userId } = req.auth();
+    const grouped = await Message.aggregate([
+      { $match: { to_user_id: userId, is_seen: false } },
+      { $group: { _id: "$from_user_id", count: { $sum: 1 } } },
+    ]);
+
+    const byUser = Object.fromEntries(
+      grouped.map((item) => [item._id, item.count]),
+    );
+    const total = grouped.reduce((sum, item) => sum + item.count, 0);
+
+    res.json({ success: true, total, byUser });
+  } catch (error) {
+    console.error("Error fetching unread message counts:", error);
+    res.status(500).json({ success: false, message: "Unable to load unread messages" });
+  }
+};
+
+export const markChatMessagesRead = async (req, res) => {
+  try {
+    const { userId } = req.auth();
+    const { other_user_id } = req.body;
+    if (!other_user_id) {
+      return res.status(400).json({ success: false, message: "Chat user is required" });
+    }
+
+    const unseenMessages = await Message.find({
+      from_user_id: other_user_id,
+      to_user_id: userId,
+      is_seen: false,
+    }).select("_id");
+    const messageIds = unseenMessages.map((message) => message._id);
+
+    if (messageIds.length) {
+      await Message.updateMany(
+        { _id: { $in: messageIds } },
+        { $set: { is_seen: true, delivery_status: "seen" } },
+      );
+      broadcast(other_user_id, {
+        type: "seen",
+        payload: { messageIds, seenBy: userId },
+      });
+    }
+
+    res.json({ success: true, messageIds });
+  } catch (error) {
+    console.error("Error marking chat messages read:", error);
+    res.status(500).json({ success: false, message: "Unable to mark messages as read" });
   }
 };
 

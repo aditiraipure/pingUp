@@ -17,12 +17,14 @@ import Profile from "./pages/Profile";
 import CreatePost from "./pages/CreatePost";
 import Layout from "./pages/Layout";
 import { fetchConnections } from "./features/connections/connectionSlice.js";
-import { addMessage, markMessagesSeen, setTyping } from "./features/messages/messagesSlice.js";
+import { addMessage, fetchUnreadMessageCounts, incrementUnread, markChatRead, markMessagesSeen, setTyping } from "./features/messages/messagesSlice.js";
+import api from "./api/axios.js";
 import Notification from "./component/Notification";
 import Loading from "./component/Loading";
 import Appearance from "./pages/Appearance";
 import Settings from "./pages/Settings";
 import Archive from "./pages/Archive";
+import FollowRequests from "./pages/FollowRequests";
 
 const App = () => {
   const { user, isLoaded } = useUser();
@@ -42,6 +44,7 @@ const App = () => {
         await Promise.all([
           dispatch(fetchUser(token)),
           dispatch(fetchConnections(token)),
+          dispatch(fetchUnreadMessageCounts(token)),
         ]);
       }
       if (active) setInitialDataReady(true);
@@ -72,9 +75,34 @@ const App = () => {
         import.meta.env.VITE_BASEURL + "/api/message/events/" + user.id,
       );
 
-     eventSource.onmessage = (event) => {
+     eventSource.onmessage = async (event) => {
        const realtimeEvent = JSON.parse(event.data);
        if (realtimeEvent.type === "connected") return;
+       if (realtimeEvent.type === "follow_request") {
+         const requester = realtimeEvent.payload?.fromUser;
+         const token = await getToken();
+         dispatch(fetchConnections(token));
+         toast.success(`${requester?.full_name || "Someone"} requested to follow you.`);
+         window.dispatchEvent(new CustomEvent("follow-request-received", { detail: realtimeEvent.payload }));
+         return;
+       }
+       if (realtimeEvent.type === "follow_request_updated") {
+         const token = await getToken();
+         dispatch(fetchUser(token));
+         dispatch(fetchConnections(token));
+         window.dispatchEvent(new CustomEvent("follow-status-updated", { detail: realtimeEvent.payload }));
+         toast.success(realtimeEvent.payload?.status === "accepted" ? "Connection accepted." : "Your follow request was declined.");
+         return;
+       }
+       if (realtimeEvent.type === "follow_relationship_removed") {
+         const token = await getToken();
+         dispatch(fetchUser(token));
+         dispatch(fetchConnections(token));
+         window.dispatchEvent(new CustomEvent("follow-relationship-removed", { detail: realtimeEvent.payload }));
+         window.dispatchEvent(new Event("profile-updated"));
+         window.dispatchEvent(new Event("feed-refresh"));
+         return;
+       }
        if (realtimeEvent.type === "typing") {
          dispatch(setTyping({ userId: realtimeEvent.payload.from_user_id, isTyping: realtimeEvent.payload.is_typing }));
          return;
@@ -84,14 +112,23 @@ const App = () => {
          return;
        }
        const message = realtimeEvent.type === "message" ? realtimeEvent.payload : realtimeEvent;
+       const senderId = message?.from_user_id?._id || message?.from_user_id;
        window.dispatchEvent(new Event("recent-messages-updated"));
 
        if (
-         message?.from_user_id?._id &&
-         pathnameRef.current === "/messages/" + message.from_user_id._id
+         senderId &&
+         pathnameRef.current === "/messages/" + senderId
        ) {
          dispatch(addMessage(message));
+         dispatch(markChatRead(senderId));
+         const token = await getToken();
+         api.post(
+           "/api/message/read",
+           { other_user_id: senderId },
+           { headers: { Authorization: `Bearer ${token}` } },
+         ).catch(() => dispatch(fetchUnreadMessageCounts(token)));
        } else {
+         if (senderId) dispatch(incrementUnread(senderId));
          toast.custom((t) => <Notification t={t} message={message} />, {
            position: "bottom-right",
          });
@@ -102,7 +139,7 @@ const App = () => {
         eventSource.close();
       };
     }
-  }, [user, dispatch]);
+  }, [user, dispatch, getToken]);
 
   if (!isLoaded || (user && !initialDataReady)) {
     return <Loading />;
@@ -134,6 +171,7 @@ const App = () => {
             <Route path="appearance" element={<Appearance />} />
             <Route path="settings" element={<Settings />} />
             <Route path="archive" element={<Archive />} />
+            <Route path="follow-requests" element={<FollowRequests />} />
           </Route>
         )}
 
