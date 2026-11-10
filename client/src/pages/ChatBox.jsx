@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Download, FileArchive, FileCode, FileSpreadsheet, FileText, ImageIcon, Minus, Music, Paperclip, Plus, Presentation, SendHorizonal, X } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
@@ -120,7 +120,7 @@ const ChatBox = () => {
     else { setFile(attachment); setImage(null); }
   };
 
-  const fetchUserMessages = async () => {
+  const fetchUserMessages = useCallback(async () => {
     try {
       const token = await getToken();
       await dispatch(fetchMessages({ token, userId }));
@@ -128,7 +128,7 @@ const ChatBox = () => {
     } catch (error) {
       toast.error(error.message);
     }
-  };
+  }, [dispatch, getToken, userId]);
 
   const sendMessage = async () => {
     let tempId;
@@ -192,7 +192,7 @@ const ChatBox = () => {
     return () => {
       dispatch(resetMessages());
     };
-  }, [userId]);
+  }, [fetchUserMessages, dispatch]);
 
   useEffect(() => {
     let active = true;

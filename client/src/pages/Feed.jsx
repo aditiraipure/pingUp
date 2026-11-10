@@ -1,39 +1,37 @@
-import React, { useEffect, useState } from 'react'
-import toast from 'react-hot-toast'
-import Loading from '../component/Loading'
-import StoriesBar from '../component/StoriesBar'
-import PostCard from '../component/PostCard'
-import RecentMessages from '../component/RecentMessages'
-import SponsoredCarousel from '../component/SponsoredCarousel'
-import { useAuth, useUser } from '@clerk/clerk-react'
-import api from '../api/axios'
+import React, { useEffect, useState, useCallback } from 'react';
+import toast from 'react-hot-toast';
+import Loading from '../component/Loading';
+import StoriesBar from '../component/StoriesBar';
+import PostCard from '../component/PostCard';
+import RecentMessages from '../component/RecentMessages';
+import SponsoredCarousel from '../component/SponsoredCarousel';
+import { useAuth, useUser } from '@clerk/clerk-react';
+import api from '../api/axios';
 
 const Feed = () => {
+  const [feeds, setFeeds] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [sponsoredAds, setSponsoredAds] = useState([]);
+  const { getToken } = useAuth();
+  const { user } = useUser();
 
-   const [feeds , setFeeds] = useState([])
-   const [loading , setLoading] = useState(false)
-   const [sponsoredAds, setSponsoredAds] = useState([])
-   const { getToken } = useAuth();
-   const { user } = useUser();
-
-  const fetchFeeds = async () => {  
+  const fetchFeeds = useCallback(async () => {
     try {
-      setLoading(true)
-      const {data} = await api.get('/api/post/feed' , {
-        headers : {Authorization:`Bearer ${await getToken()}`}
-      })
-      if(data.success){
-        setFeeds(data.posts)
-      }
-      else{
-        toast.error(data.message)
+      setLoading(true);
+      const { data } = await api.get('/api/post/feed', {
+        headers: { Authorization: `Bearer ${await getToken()}` },
+      });
+      if (data.success) {
+        setFeeds(data.posts);
+      } else {
+        toast.error(data.message);
       }
     } catch (error) {
-      toast.error(error.message)
-      
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
     }
-     setLoading(false)
-   }
+  }, [getToken]);
 
   useEffect(() => {
     fetchFeeds();
@@ -43,7 +41,7 @@ const Feed = () => {
       window.removeEventListener("profile-updated", fetchFeeds);
       window.removeEventListener("feed-refresh", fetchFeeds);
     };
-  }, []);
+  }, [fetchFeeds]);
 
   useEffect(() => {
     let active = true;
@@ -90,14 +88,12 @@ const Feed = () => {
       {/* Right sidebar */}
       <div className="max-xl:hidden sticky top-0">
         <SponsoredCarousel ads={sponsoredAds} />
-        
         {user && <RecentMessages />}
-        
       </div>
     </div>
   ) : (
     <Loading />
-  );                         
-}
+  );
+};
 
 export default Feed;

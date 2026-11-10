@@ -52,6 +52,7 @@ export const sseController = (req, res) => {
     }
   });
 };
+
 // send message
 export const sendMessage = async (req, res) => {
   try {
@@ -61,8 +62,8 @@ export const sendMessage = async (req, res) => {
       ? req.files[0]
       : req.files?.file?.[0] || req.files?.image?.[0] || req.files?.attachment?.[0] || req.files?.media?.[0];
 
-    if (!to_user_id || (!message?.trim() && !attachment && !shared_post_id && !shared_story_id)) {
-      return res.status(400).json({ success: false, message: "Recipient and message content are required" });
+    if (!to_user_id || typeof to_user_id !== "string" || !to_user_id.trim() || (!message?.trim() && !attachment && !shared_post_id && !shared_story_id)) {
+      return res.status(400).json({ success: false, message: "Valid recipient and message content are required" });
     }
     if (attachment && attachment.size > 25 * 1024 * 1024) {
       return res.status(413).json({ success: false, message: "Attachments must be 25 MB or smaller" });
@@ -95,7 +96,7 @@ export const sendMessage = async (req, res) => {
 
     const messageData = await Message.create({
       from_user_id: userId,
-      to_user_id,
+      to_user_id: String(to_user_id).trim(),
       message: message?.trim() || "",
       message_type,
       media_url,
@@ -127,30 +128,37 @@ export const sendMessage = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 // get chat messages
 export const getChatMessages = async (req, res) => {
   try {
     const { userId } = req.auth();
     const { to_user_id } = req.body;
 
+    if (!to_user_id || typeof to_user_id !== "string" || !to_user_id.trim()) {
+      return res.status(400).json({ success: false, message: "Recipient ID must be a valid string" });
+    }
+
+    const recipientId = String(to_user_id).trim();
+
     const messages = await Message.find({
       $or: [
-        { from_user_id: userId, to_user_id },
-        { from_user_id: to_user_id, to_user_id: userId },
+        { from_user_id: userId, to_user_id: recipientId },
+        { from_user_id: recipientId, to_user_id: userId },
       ],
     }).sort({ createdAt: 1 })
       .populate({ path: "shared_post", populate: { path: "user" } })
       .populate({ path: "shared_story", populate: { path: "user" } });
 
     const unseenMessages = await Message.find({
-        from_user_id: to_user_id,
+        from_user_id: recipientId,
         to_user_id: userId,
         is_seen: false, 
     }).select("_id");
     const seenIds = unseenMessages.map((item) => item._id);
     if (seenIds.length) {
       await Message.updateMany({ _id: { $in: seenIds } }, { is_seen: true, delivery_status: "seen" });
-      broadcast(to_user_id, { type: "seen", payload: { messageIds: seenIds, seenBy: userId } });
+      broadcast(recipientId, { type: "seen", payload: { messageIds: seenIds, seenBy: userId } });
       const seenIdSet = new Set(seenIds.map((id) => id.toString()));
       messages.forEach((message) => {
         if (seenIdSet.has(message._id.toString())) {
@@ -190,12 +198,14 @@ export const markChatMessagesRead = async (req, res) => {
   try {
     const { userId } = req.auth();
     const { other_user_id } = req.body;
-    if (!other_user_id) {
-      return res.status(400).json({ success: false, message: "Chat user is required" });
+    if (!other_user_id || typeof other_user_id !== "string" || !other_user_id.trim()) {
+      return res.status(400).json({ success: false, message: "Valid chat user ID is required" });
     }
 
+    const otherUserId = String(other_user_id).trim();
+
     const unseenMessages = await Message.find({
-      from_user_id: other_user_id,
+      from_user_id: otherUserId,
       to_user_id: userId,
       is_seen: false,
     }).select("_id");
@@ -206,7 +216,7 @@ export const markChatMessagesRead = async (req, res) => {
         { _id: { $in: messageIds } },
         { $set: { is_seen: true, delivery_status: "seen" } },
       );
-      broadcast(other_user_id, {
+      broadcast(otherUserId, {
         type: "seen",
         payload: { messageIds, seenBy: userId },
       });
@@ -255,8 +265,10 @@ export const sendTypingStatus = async (req, res) => {
   try {
     const { userId } = req.auth();
     const { to_user_id, is_typing } = req.body;
-    if (!to_user_id) return res.status(400).json({ success: false, message: "Recipient is required" });
-    broadcast(to_user_id, { type: "typing", payload: { from_user_id: userId, is_typing: Boolean(is_typing) } });
+    if (!to_user_id || typeof to_user_id !== "string" || !to_user_id.trim()) {
+      return res.status(400).json({ success: false, message: "Valid recipient ID is required" });
+    }
+    broadcast(String(to_user_id).trim(), { type: "typing", payload: { from_user_id: userId, is_typing: Boolean(is_typing) } });
     return res.json({ success: true });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });

@@ -30,7 +30,20 @@ const PostCard = ({ post, onLikeChange, onPostChange, onPostRemoved, archiveActi
   const { getToken } = useAuth();
   const navigate = useNavigate();
   const isOwner = Boolean(currentUser?._id && currentPost?.user?._id === currentUser._id);
-  const postWithHashTags = currentPost?.content?.replace(/(#\w+)/g, "<span class='text-indigo-600'>$1</span>");
+
+  const renderFormattedContent = (content) => {
+    if (!content) return null;
+    const parts = content.split(/(#\w+)/g);
+    return parts.map((part, index) =>
+      part.startsWith("#") ? (
+        <span key={index} className="text-indigo-600 font-medium">
+          {part}
+        </span>
+      ) : (
+        part
+      )
+    );
+  };
 
   useEffect(() => {
     setCurrentPost(post);
@@ -120,7 +133,7 @@ const PostCard = ({ post, onLikeChange, onPostChange, onPostRemoved, archiveActi
         {!isOwner && currentUser?._id && <OtherPostOptions post={currentPost} onNotInterested={hideFromFeed} />}
       </div>
 
-      {currentPost?.content && <div className="text-gray-800 text-sm whitespace-pre-line" dangerouslySetInnerHTML={{ __html: postWithHashTags }} />}
+      {currentPost?.content && <div className="text-gray-800 text-sm whitespace-pre-line">{renderFormattedContent(currentPost.content)}</div>}
       {currentPost?.location && <p className="text-xs text-slate-500">{currentPost.location}</p>}
       {currentPost?.tags?.length > 0 && <p className="text-sm text-indigo-600">{currentPost.tags.map((tag) => `#${tag}`).join(" ")}</p>}
       <div className="grid grid-cols-2 gap-2">

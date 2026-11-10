@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import UserProfileInfo from "../component/UserProfileInfo";
 import PostCard from "../component/PostCard";
@@ -40,7 +40,7 @@ const Profile = () => {
   const [followStatus, setFollowStatus] = useState("none");
   const [followLoading, setFollowLoading] = useState(false);
 
-  const fetchUser = async (profileId) => {
+  const fetchUser = useCallback(async (profileId) => {
     setLoading(true);
     setError("");
     try {
@@ -63,12 +63,12 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken]);
 
 useEffect(() => {
   const targetProfileId = profileId || currentUser?._id || clerkUser?.id;
   if (targetProfileId) fetchUser(targetProfileId);
-}, [profileId, currentUser?._id, clerkUser?.id]);
+}, [profileId, currentUser?._id, clerkUser?.id, fetchUser]);
 
 useEffect(() => {
   const updateFollowStatus = (event) => {
@@ -123,7 +123,7 @@ useEffect(() => {
   };
   window.addEventListener("profile-updated", refreshProfile);
   return () => window.removeEventListener("profile-updated", refreshProfile);
-}, [profileId, currentUser?._id, clerkUser?.id]);
+}, [profileId, currentUser?._id, clerkUser?.id, fetchUser]);
 
 
   if (loading) return <div className="p-6 max-w-3xl mx-auto space-y-4"><div className="h-56 rounded-2xl bg-purple-100 animate-pulse"/><div className="h-40 rounded-2xl bg-white animate-pulse"/></div>;

@@ -15,18 +15,38 @@ import sponsoredRouter from "./routes/sponsoredRoutes.js";
 
 const app = express();
 
-
-connectDB();
+// Ensure DB is connected before processing requests
+app.use(async (_req, _res, next) => {
+  try {
+    await connectDB();
+  } catch (err) {
+    console.error("DB connection error in middleware:", err);
+  }
+  next();
+});
 
 app.use(express.json());
-app.use(cors());
-// app.use(cors({
-//   origin: [
-//     "http://localhost:5173",
-//     "https://pingup-app-swart.vercel.app"
-//   ],
-//   credentials: true
-// }));
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://pingup-app-swart.vercel.app",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
+    credentials: true,
+  })
+);
+
 app.use(clerkMiddleware());
 
 app.get("/", (req, res) => res.send("Server is running"));
@@ -48,6 +68,10 @@ app.use("/api/sponsored", sponsoredRouter);
 
 const PORT = process.env.PORT || 4000;
 
-app.listen(PORT, () =>
-  console.log(`Server is running on port ${PORT}`)
-);
+if (!process.env.VERCEL) {
+  app.listen(PORT, () =>
+    console.log(`Server is running on port ${PORT}`)
+  );
+}
+
+export default app;
